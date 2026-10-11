@@ -45,6 +45,7 @@ def test_db():
     mp = pytest.MonkeyPatch()
     mp.setenv("DATABASE_URL", test_url)
     mp.setenv("EMBEDDING_WARMUP", "false")
+    mp.setenv("ANTHROPIC_API_KEY", "sk-ant-teste")  # a Claude API é falsa nos testes; só precisa existir
     config.settings.cache_clear()
     db._pool = None
     db.migrate()

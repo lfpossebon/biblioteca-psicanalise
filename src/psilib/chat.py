@@ -12,6 +12,7 @@ Cada pergunta é um laço: chamada ao Claude em streaming → ferramentas pedida
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -343,6 +344,9 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
     t0 = time.monotonic()
     question = question.strip()
     try:
+        if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+            log.error("ANTHROPIC_API_KEY não configurada")
+            raise ChatError("O chat ainda não está configurado: falta a chave da Claude API no servidor.")
         if not question:
             raise ChatError("Escreva uma pergunta.")
         if len(question) > 4000:

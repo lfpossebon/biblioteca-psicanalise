@@ -267,3 +267,15 @@ def test_public_mode_exposes_only_chat(chat_env, monkeypatch):
         ).fetchone()
     assert row["feedback"] == -1 and row["comment"] == "faltou o Seminário 7"
     assert row["client_key"] == chat.client_key("200.1.2.3")  # IP do cliente, não do proxy
+
+
+@pytest.mark.integration
+def test_missing_api_key_gives_clear_message(chat_env, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    events = list(chat.answer(ANA, KEY_ANA, "Olá"))
+    assert events == [
+        {
+            "tipo": "erro",
+            "texto": "O chat ainda não está configurado: falta a chave da Claude API no servidor.",
+        }
+    ]
