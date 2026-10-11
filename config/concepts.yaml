@@ -1,0 +1,522 @@
+# Léxico multilíngue de conceitos (pt, es, fr, en, de).
+#
+# Os padrões são regex aplicadas ao texto normalizado: minúsculas, sem acentos,
+# apóstrofos tipográficos convertidos para '. Com `cs: true` o padrão é aplicado
+# ao texto sem acentos mas com maiúsculas preservadas (ex.: "Outro" vs "outro").
+# Cada chunk só é comparado com os padrões da sua língua (+ `any`), o que evita que
+# "real" em inglês conte como o registro do Real em português.
+#
+# O léxico é deliberadamente conservador: prefere perder ocorrências a contar ruído.
+# Edite aqui, rode `psilib concepts` e as visões de linha do tempo são recalculadas.
+
+concepts:
+  # ------------------------------------------------------------ registros
+  - slug: real
+    label: Real
+    family: registros
+    terms:
+      pt: ["\\b(?:o|do|no|ao|pelo) real\\b"]
+      es: ["\\b(?:lo|del|al) real\\b"]
+      fr: ["\\b(?:le|du|au) reel\\b"]
+      en: ["\\bthe real\\b"]
+  - slug: simbolico
+    label: Simbólico
+    family: registros
+    terms:
+      pt: ["\\b(?:o|do|no|ao|pelo) simbolico\\b"]
+      es: ["\\b(?:lo|del|al) simbolico\\b"]
+      fr: ["\\b(?:le|du|au) symbolique\\b"]
+      en: ["\\bthe symbolic\\b"]
+  - slug: imaginario
+    label: Imaginário
+    family: registros
+    terms:
+      pt: ["\\b(?:o|do|no|ao|pelo) imaginario\\b"]
+      es: ["\\b(?:lo|del|al) imaginario\\b"]
+      fr: ["\\b(?:l'|de l'|a l')imaginaire\\b"]
+      en: ["\\bthe imaginary\\b"]
+  - slug: no-borromeano
+    label: Nó borromeano
+    family: topologia
+    terms:
+      pt: ["\\bborromean[oa]s?\\b"]
+      es: ["\\bborrome[oa]s?\\b"]
+      fr: ["\\bborromeen(ne)?s?\\b"]
+      en: ["\\bborromean\\b"]
+
+  # ------------------------------------------------------------ sujeito e linguagem
+  - slug: significante
+    label: Significante
+    family: linguagem
+    terms:
+      pt: ["\\bsignificantes?\\b"]
+      es: ["\\bsignificantes?\\b"]
+      fr: ["\\bsignifiants?\\b"]
+      en: ["\\bsignifiers?\\b"]
+  - slug: letra
+    label: Letra
+    family: linguagem
+    terms:
+      pt: ["\\b(?:a|da|na) letra\\b"]
+      es: ["\\b(?:la|de la) letra\\b"]
+      fr: ["\\b(?:la|de la) lettre\\b"]
+      en: ["\\bthe letter\\b"]
+  - slug: sujeito
+    label: Sujeito
+    family: linguagem
+    terms:
+      pt: ["\\bsujeitos?\\b"]
+      es: ["\\bsujetos?\\b"]
+      fr: ["\\bsujets?\\b"]
+      en: ["\\bsubjects?\\b"]
+  - slug: grande-outro
+    label: Outro (grande Outro)
+    family: linguagem
+    terms:
+      pt: [{p: "\\b(?:o|do|no|ao|pelo|grande|um) Outro\\b", cs: true}]
+      es: [{p: "\\b(?:el|del|al|gran) Otro\\b", cs: true}]
+      fr: [{p: "(?:\\bl'|\\bgrand )Autre\\b", cs: true}]
+      en: [{p: "\\b(?:the|big) Other\\b", cs: true}]
+  - slug: ponto-de-basta
+    label: Ponto de basta
+    family: linguagem
+    terms:
+      pt: ["ponto de (?:basta|estofo|capitone)"]
+      es: ["punto de (?:almohadillado|capitonado|capiton|basta)"]
+      fr: ["points? de capiton"]
+      en: ["quilting points?|anchoring points?|point de capiton"]
+  - slug: metafora-paterna
+    label: Metáfora paterna
+    family: edipo
+    terms:
+      pt: ["metafora paterna"]
+      es: ["metafora paterna"]
+      fr: ["metaphore paternelle"]
+      en: ["paternal metaphor"]
+  - slug: lalingua
+    label: Lalíngua
+    family: linguagem
+    terms:
+      pt: ["\\blalingua\\b"]
+      es: ["\\blalengua\\b"]
+      fr: ["\\blalangue\\b"]
+      en: ["\\blalangue\\b|\\bllanguage\\b"]
+  - slug: matema
+    label: Matema
+    family: linguagem
+    terms:
+      pt: ["\\bmatemas?\\b"]
+      es: ["\\bmatemas?\\b"]
+      fr: ["\\bmathemes?\\b"]
+      en: ["\\bmathemes?\\b"]
+  - slug: traco-unario
+    label: Traço unário
+    family: linguagem
+    terms:
+      pt: ["traco unario"]
+      es: ["rasgo unario"]
+      fr: ["trait unaire"]
+      en: ["unary trait"]
+      de: ["einziger zug"]
+  - slug: sujeito-suposto-saber
+    label: Sujeito suposto saber
+    family: tecnica
+    terms:
+      pt: ["sujeito suposto saber"]
+      es: ["sujeto supuesto saber"]
+      fr: ["sujet suppose savoir"]
+      en: ["subject supposed to know"]
+  - slug: alienacao
+    label: Alienação / separação
+    family: linguagem
+    terms:
+      pt: ["\\balienacao\\b"]
+      es: ["\\balienacion\\b"]
+      fr: ["\\balienation\\b"]
+      en: ["\\balienation\\b"]
+
+  # ------------------------------------------------------------ desejo, gozo, objeto
+  - slug: desejo
+    label: Desejo
+    family: desejo_gozo
+    terms:
+      pt: ["\\bdesejos?\\b"]
+      es: ["\\bdeseos?\\b"]
+      fr: ["\\bdesirs?\\b"]
+      en: ["\\bdesires?\\b"]
+      de: ["\\bwunsch\\w*"]
+  - slug: demanda
+    label: Demanda
+    family: desejo_gozo
+    terms:
+      pt: ["\\bdemandas?\\b"]
+      es: ["\\bdemandas?\\b"]
+      fr: ["\\bdemandes?\\b"]
+      en: ["\\bdemands?\\b"]
+  - slug: objeto-a
+    label: Objeto a
+    family: desejo_gozo
+    terms:
+      pt: ["\\bobjeto (?:pequeno )?\\(?a\\)?(?! (?:ser|que|qual|partir|um|uma|o|os|as|seu|sua)\\b)", "\\bpequeno a\\b"]
+      es: ["\\bobjeto (?:pequeno )?\\(?a\\)?(?! (?:ser|que|cual|partir|un|una|la|los|las|su)\\b)"]
+      fr: ["\\bobjet (?:petit )?\\(?a\\)?(?! (?:ete|etre|que|un|une|la|le|les|son|sa)\\b)", "\\bpetit a\\b"]
+      en: ["\\bobject (?:petit |small )?\\(?a\\)?(?! (?:to|that|which|is|be)\\b)"]
+  - slug: gozo
+    label: Gozo
+    family: desejo_gozo
+    terms:
+      pt: ["\\bgozos?\\b"]
+      es: ["\\bgoces?\\b"]
+      fr: ["\\bjouissances?\\b"]
+      en: ["\\bjouissance\\b"]
+  - slug: mais-de-gozar
+    label: Mais-de-gozar
+    family: desejo_gozo
+    terms:
+      pt: ["mais[- ]de[- ]gozar"]
+      es: ["plus[- ]de[- ](?:gozar|goce)"]
+      fr: ["plus[- ]de[- ]jouir"]
+      en: ["surplus[- ](?:jouissance|enjoyment)|plus[- ]de[- ]jouir"]
+  - slug: fantasia
+    label: Fantasia / fantasma
+    family: desejo_gozo
+    terms:
+      pt: ["\\bfantasias?\\b", "\\bfantasmas?\\b"]
+      es: ["\\bfantasmas?\\b", "\\bfantasias?\\b"]
+      fr: ["\\bfantasmes?\\b", "\\bphantasmes?\\b"]
+      en: ["\\bfantas(?:y|ies)\\b", "\\bphantas(?:y|ies)\\b"]
+      de: ["\\bphantasie\\w*"]
+  - slug: pulsao
+    label: Pulsão
+    family: desejo_gozo
+    terms:
+      pt: ["\\bpuls(?:ao|oes)\\b"]
+      es: ["\\bpulsi(?:on|ones)\\b"]
+      fr: ["\\bpulsions?\\b"]
+      en: ["\\bdrives?\\b", "\\binstincts?\\b"]
+      de: ["\\btrieb\\w*"]
+  - slug: pulsao-de-morte
+    label: Pulsão de morte
+    family: desejo_gozo
+    terms:
+      pt: ["puls(?:ao|oes) de morte", "instintos? de morte"]
+      es: ["pulsi(?:on|ones) de muerte"]
+      fr: ["pulsions? de mort"]
+      en: ["death (?:drive|instinct)s?"]
+      de: ["todestrieb\\w*"]
+  - slug: das-ding
+    label: Das Ding / a Coisa
+    family: desejo_gozo
+    terms:
+      any: ["\\bdas ding\\b"]
+      pt: [{p: "\\b(?:a|da|na) Coisa\\b", cs: true}]
+      es: [{p: "\\b(?:la|de la) Cosa\\b", cs: true}]
+      fr: [{p: "\\b(?:la|de la) Chose\\b", cs: true}]
+      en: [{p: "\\bthe Thing\\b", cs: true}]
+  - slug: semblante
+    label: Semblante
+    family: desejo_gozo
+    terms:
+      pt: ["\\bsemblantes?\\b"]
+      es: ["\\bsemblantes?\\b"]
+      fr: ["\\bsemblants?\\b"]
+      en: ["\\bsemblance\\b|\\bsemblant\\b"]
+  - slug: falta-a-ser
+    label: Falta-a-ser
+    family: desejo_gozo
+    terms:
+      pt: ["falta[- ]a[- ]ser"]
+      es: ["falta[- ]en[- ]ser"]
+      fr: ["manque[- ]a[- ]etre"]
+      en: ["lack[- ]of[- ]being|want[- ]to[- ]be"]
+  - slug: amor
+    label: Amor
+    family: desejo_gozo
+    terms:
+      pt: ["\\bamor\\b"]
+      es: ["\\bamor\\b"]
+      fr: ["\\bamour\\b"]
+      en: ["\\blove\\b"]
+      de: ["\\bliebe\\b"]
+
+  # ------------------------------------------------------------ Édipo, falo, sexuação
+  - slug: nome-do-pai
+    label: Nome-do-Pai
+    family: edipo
+    terms:
+      pt: ["nomes?[- ]do[- ]pai"]
+      es: ["nombres?[- ]del[- ]padre"]
+      fr: ["noms?[- ]du[- ]pere"]
+      en: ["names?[- ]of[- ]the[- ]father"]
+  - slug: edipo
+    label: Complexo de Édipo
+    family: edipo
+    terms:
+      pt: ["\\bedipo\\b", "\\bedipian[oa]s?\\b"]
+      es: ["\\bedipo\\b", "\\bedipic[oa]s?\\b"]
+      fr: ["\\boedipe\\b", "\\boedipien(ne)?s?\\b"]
+      en: ["\\boedip(?:us|al)\\b"]
+      de: ["\\bodipus\\w*"]
+  - slug: falo
+    label: Falo
+    family: edipo
+    terms:
+      pt: ["\\bfal(?:o|ico|ica|icos|icas)\\b"]
+      es: ["\\bfal(?:o|ico|ica|icos|icas)\\b"]
+      fr: ["\\bphallus\\b", "\\bphalliques?\\b"]
+      en: ["\\bphallus\\b", "\\bphallic\\b"]
+  - slug: castracao
+    label: Castração
+    family: edipo
+    terms:
+      pt: ["\\bcastra(?:cao|coes)\\b", "\\bcastrad[oa]s?\\b"]
+      es: ["\\bcastraci(?:on|ones)\\b", "\\bcastrad[oa]s?\\b"]
+      fr: ["\\bcastration\\b", "\\bcastre(?:e|s|es)?\\b"]
+      en: ["\\bcastrat(?:ion|ed)\\b"]
+      de: ["\\bkastration\\w*"]
+  - slug: sexuacao
+    label: Sexuação
+    family: edipo
+    terms:
+      pt: ["\\bsexuacao\\b"]
+      es: ["\\bsexuacion\\b"]
+      fr: ["\\bsexuation\\b"]
+      en: ["\\bsexuation\\b"]
+  - slug: nao-todo
+    label: Não-todo
+    family: edipo
+    terms:
+      pt: ["\\bnao-tod[oa]s?\\b"]
+      es: ["\\bno-tod[oa]s?\\b"]
+      fr: ["\\bpas-toute?s?\\b"]
+      en: ["\\bnot-(?:all|whole)\\b"]
+
+  # ------------------------------------------------------------ metapsicologia freudiana
+  - slug: inconsciente
+    label: Inconsciente
+    family: metapsicologia
+    terms:
+      pt: ["\\binconscientes?\\b"]
+      es: ["\\binconscientes?\\b"]
+      fr: ["\\binconscients?\\b"]
+      en: ["\\bunconscious\\b"]
+      de: ["\\bunbewusst\\w*"]
+  - slug: recalque
+    label: Recalque
+    family: metapsicologia
+    terms:
+      pt: ["\\brecalque\\b", "\\brecalcamento\\b", "\\brecalcad[oa]s?\\b", "\\brepress(?:ao|oes)\\b"]
+      es: ["\\brepresi(?:on|ones)\\b", "\\breprimid[oa]s?\\b"]
+      fr: ["\\brefoulement\\b", "\\brefoulee?s?\\b"]
+      en: ["\\brepress(?:ion|ed)\\b"]
+      de: ["\\bverdrang\\w*"]
+  - slug: foraclusao
+    label: Foraclusão
+    family: clinica
+    terms:
+      pt: ["\\bforaclu(?:sao|ido|ida)\\b", "\\bforclu(?:sao|ido|ida)\\b"]
+      es: ["\\bforclusi(?:on)\\b", "\\bforcluid[oa]s?\\b"]
+      fr: ["\\bforclusion\\b", "\\bforclose?s?\\b"]
+      en: ["\\bforeclos(?:ure|ed)\\b"]
+      de: ["\\bverwerfung\\b"]
+  - slug: desmentido
+    label: Desmentido (Verleugnung)
+    family: clinica
+    terms:
+      any: ["\\bverleugnung\\b"]
+      pt: ["\\bdesmentido\\b", "\\brecusa da castracao\\b"]
+      es: ["\\bdesmentida\\b", "\\brenegacion\\b"]
+      fr: ["\\bdementi\\b", "\\bdeni de la castration\\b"]
+      en: ["\\bdisavowal\\b"]
+  - slug: eu
+    label: Eu (moi / ego)
+    family: metapsicologia
+    terms:
+      pt: ["\\bo eu\\b", "\\bdo eu\\b"]
+      es: ["\\bel yo\\b", "\\bdel yo\\b"]
+      fr: ["\\ble moi\\b", "\\bdu moi\\b"]
+      en: ["\\bthe ego\\b"]
+      de: ["\\bdas ich\\b"]
+  - slug: supereu
+    label: Supereu
+    family: metapsicologia
+    terms:
+      pt: ["\\bsuper-?eu\\b", "\\bsuperego\\b"]
+      es: ["\\bsuper-?yo\\b"]
+      fr: ["\\bsur-?moi\\b"]
+      en: ["\\bsuper-?ego\\b"]
+      de: ["\\buber-?ich\\b"]
+  - slug: narcisismo
+    label: Narcisismo
+    family: metapsicologia
+    terms:
+      pt: ["\\bnarcis\\w*"]
+      es: ["\\bnarcis\\w*"]
+      fr: ["\\bnarciss\\w*"]
+      en: ["\\bnarciss\\w*"]
+      de: ["\\bnarzi\\w*"]
+  - slug: identificacao
+    label: Identificação
+    family: metapsicologia
+    terms:
+      pt: ["\\bidentifica(?:cao|coes)\\b"]
+      es: ["\\bidentificaci(?:on|ones)\\b"]
+      fr: ["\\bidentifications?\\b"]
+      en: ["\\bidentifications?\\b"]
+      de: ["\\bidentifizierung\\w*"]
+  - slug: estadio-do-espelho
+    label: Estádio do espelho
+    family: metapsicologia
+    terms:
+      pt: ["est(?:adio|agio|ado) do espelho"]
+      es: ["estadio del espejo"]
+      fr: ["stade du miroir"]
+      en: ["mirror (?:stage|phase)"]
+  - slug: repeticao
+    label: Repetição
+    family: metapsicologia
+    terms:
+      pt: ["\\brepeti(?:cao|coes)\\b"]
+      es: ["\\brepetici(?:on|ones)\\b"]
+      fr: ["\\brepetitions?\\b"]
+      en: ["\\brepetition\\b", "compulsion to repeat"]
+      de: ["\\bwiederholung\\w*"]
+  - slug: angustia
+    label: Angústia
+    family: clinica
+    terms:
+      pt: ["\\bangustias?\\b"]
+      es: ["\\bangustias?\\b"]
+      fr: ["\\bangoisses?\\b"]
+      en: ["\\banxiety\\b"]
+      de: ["\\bangst\\b"]
+  - slug: sublimacao
+    label: Sublimação
+    family: metapsicologia
+    terms:
+      pt: ["\\bsublima(?:cao|coes)\\b"]
+      es: ["\\bsublimaci(?:on|ones)\\b"]
+      fr: ["\\bsublimations?\\b"]
+      en: ["\\bsublimation\\b"]
+      de: ["\\bsublimierung\\w*"]
+
+  # ------------------------------------------------------------ clínica e estruturas
+  - slug: sintoma
+    label: Sintoma
+    family: clinica
+    terms:
+      pt: ["\\bsintomas?\\b"]
+      es: ["\\bsintomas?\\b"]
+      fr: ["\\bsymptomes?\\b"]
+      en: ["\\bsymptoms?\\b"]
+      de: ["\\bsymptom\\w*"]
+  - slug: sinthoma
+    label: Sinthoma
+    family: clinica
+    terms:
+      any: ["\\bsinthome\\b", "\\bsinthoma\\b"]
+  - slug: psicose
+    label: Psicose
+    family: clinica
+    terms:
+      pt: ["\\bpsicoses?\\b"]
+      es: ["\\bpsicosis\\b"]
+      fr: ["\\bpsychoses?\\b"]
+      en: ["\\bpsychos(?:is|es)\\b"]
+      de: ["\\bpsychose\\w*"]
+  - slug: histeria
+    label: Histeria
+    family: clinica
+    terms:
+      pt: ["\\bhister(?:ia|ica|ico|icas|icos)\\b"]
+      es: ["\\bhister(?:ia|ica|ico|icas|icos)\\b"]
+      fr: ["\\bhysteri(?:e|que|ques)\\b"]
+      en: ["\\bhysteri(?:a|c|cs)\\b"]
+      de: ["\\bhysterie\\w*"]
+  - slug: neurose-obsessiva
+    label: Neurose obsessiva
+    family: clinica
+    terms:
+      pt: ["neuroses? obsessivas?"]
+      es: ["neurosis obsesivas?"]
+      fr: ["nevroses? obsessionnelles?"]
+      en: ["obsessional neuros(?:is|es)"]
+      de: ["zwangsneurose\\w*"]
+  - slug: perversao
+    label: Perversão
+    family: clinica
+    terms:
+      pt: ["\\bpervers(?:ao|oes)\\b"]
+      es: ["\\bperversi(?:on|ones)\\b"]
+      fr: ["\\bperversions?\\b"]
+      en: ["\\bperversions?\\b"]
+      de: ["\\bperversion\\w*"]
+
+  # ------------------------------------------------------------ técnica e direção do tratamento
+  - slug: transferencia
+    label: Transferência
+    family: tecnica
+    terms:
+      pt: ["\\btransferencias?\\b"]
+      es: ["\\btransferencias?\\b"]
+      fr: ["\\btransferts?\\b"]
+      en: ["\\btransference\\b"]
+      de: ["\\bubertragung\\w*"]
+  - slug: desejo-do-analista
+    label: Desejo do analista
+    family: tecnica
+    terms:
+      pt: ["desejo do (?:psic)?analista"]
+      es: ["deseo del (?:psico)?analista"]
+      fr: ["desir de l'(?:psych)?analyste"]
+      en: ["desire of the analyst|analyst'?s desire"]
+  - slug: ato-analitico
+    label: Ato analítico
+    family: tecnica
+    terms:
+      pt: ["\\bato (?:psic)?analitico\\b"]
+      es: ["\\bacto (?:psico)?analitico\\b"]
+      fr: ["\\bacte (?:psych)?analytique\\b"]
+      en: ["\\banalytic(?:al)? act\\b"]
+  - slug: passe
+    label: Passe
+    family: tecnica
+    terms:
+      pt: ["\\bo passe\\b", "\\bdo passe\\b", "\\bpassantes?\\b"]
+      es: ["\\bel pase\\b", "\\bdel pase\\b", "\\bpasantes?\\b"]
+      fr: ["\\bla passe\\b", "\\bde la passe\\b"]
+      en: ["\\bthe pass\\b"]
+  - slug: tempo-logico
+    label: Tempo lógico
+    family: tecnica
+    terms:
+      pt: ["tempo logico"]
+      es: ["tiempo logico"]
+      fr: ["temps logique"]
+      en: ["logical time"]
+  - slug: quatro-discursos
+    label: Quatro discursos
+    family: discurso
+    terms:
+      pt: ["discurso (?:do mestre|da histerica|universitario|do analista|do capitalista)", "quatro discursos"]
+      es: ["discurso (?:del amo|de la histerica|universitario|del analista|capitalista)", "cuatro discursos"]
+      fr: ["discours (?:du maitre|de l'hysterique|universitaire|de l'analyste|capitaliste)", "quatre discours"]
+      en: ["(?:master|hysteric|analyst)'?s discourse|university discourse|discourse of the (?:master|hysteric|analyst)|four discourses"]
+
+  # ------------------------------------------------------------ topologia e grafos
+  - slug: topologia
+    label: Topologia (toro, banda de Moebius, cross-cap)
+    family: topologia
+    terms:
+      pt: ["\\btopologi\\w*", "\\btoros?\\b", "moebius", "cross-?cap"]
+      es: ["\\btopologi\\w*", "\\btoros?\\b", "moebius", "cross-?cap"]
+      fr: ["\\btopologi\\w*", "\\btores?\\b", "moebius|mobius", "cross-?cap"]
+      en: ["\\btopolog\\w*", "\\btor(?:us|i)\\b", "moebius|mobius", "cross-?cap"]
+  - slug: grafo-do-desejo
+    label: Grafo do desejo
+    family: topologia
+    terms:
+      pt: ["\\bgrafos?\\b"]
+      es: ["\\bgrafos?\\b"]
+      fr: ["\\bgraphes?\\b"]
+      en: ["graph of desire"]

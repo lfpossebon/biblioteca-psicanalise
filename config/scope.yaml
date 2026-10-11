@@ -1,0 +1,155 @@
+# Escopo do acervo: o que entra e o que fica de fora.
+#
+# Regra: entram Freud, Lacan, comentadores freudianos/lacanianos e escolas pós-lacanianas
+# (incluindo a escola argentina). Linhas não convergentes (Klein, Winnicott, Bion, Ferenczi,
+# psicologia do ego...) ficam fora. Tudo é classificado mesmo quando excluído, para que
+# a decisão seja auditável e reversível (ver catalog/overrides.csv).
+#
+# Padrões são expressões regulares aplicadas ao caminho do arquivo normalizado
+# (minúsculas, sem acentos). A primeira regra que casar vence: autores antes de pastas.
+
+lines:
+  freud:               {in_scope: true,  label: "Freud (fonte primária)"}
+  lacan:               {in_scope: true,  label: "Lacan (fonte primária)"}
+  lacaniano:           {in_scope: true,  label: "Comentadores e escolas lacanianas"}
+  escola_argentina:    {in_scope: true,  label: "Escola argentina (Eidelsztein, Schejtman...)"}
+  comentador_freudiano: {in_scope: true, label: "Comentadores de Freud"}
+  fonte_clinica:       {in_scope: true,  label: "Fontes clínicas comentadas por Freud/Lacan (Schreber...)"}
+  referencia:          {in_scope: true,  label: "Dicionários e vocabulários"}
+  epistemologia:       {in_scope: false, label: "Epistemologia e filosofia de apoio (Lakatos, Koyré, Kojève)"}
+  kleiniano:           {in_scope: false, label: "Escola kleiniana"}
+  winnicottiano:       {in_scope: false, label: "Winnicott e independentes"}
+  ferencziano:         {in_scope: false, label: "Ferenczi e herdeiros"}
+  outras_psicanalises: {in_scope: false, label: "Outras linhas (ego, reichiana, eclética)"}
+  fora_do_tema:        {in_scope: false, label: "Fora do tema (pessoal, outras áreas)"}
+  autoral:             {in_scope: false, label: "Trabalhos do próprio usuário"}
+  revisar:             {in_scope: false, label: "Não classificado — revisar"}
+
+# Extensões de documentos de texto (mídia fica para a fase de transcrição).
+document_extensions: [pdf, docx, doc, epub, txt, html, htm]
+
+# Pastas/arquivos do corpus ignorados por completo.
+ignore:
+  - "^biblioteca[ -]psicanalise/"
+  - "/\\.ds_store$"
+  - "~\\$"
+
+authors:
+  # --- escola argentina
+  - {name: "Alfredo Eidelsztein", line: escola_argentina, pattern: "eidelsztein"}
+  - {name: "Fabián Schejtman",    line: escola_argentina, pattern: "schejtman"}
+  - {name: "Roberto Mazzuca",     line: escola_argentina, pattern: "mazzuca"}
+  - {name: "Bruno Bonoris",       line: escola_argentina, pattern: "bonoris"}
+  - {name: "Pablo Amster",        line: escola_argentina, pattern: "amster"}
+  - {name: "Diana Estrín",        line: escola_argentina, pattern: "estrin"}
+  - {name: "Camila Kushnir",      line: escola_argentina, pattern: "kushnir"}
+  - {name: "Félix Morales Montiel", line: escola_argentina, pattern: "morales montiel"}
+  - {name: "Diana Rabinovich",    line: escola_argentina, pattern: "rabinovich"}
+  - {name: "Roberto Harari",      line: escola_argentina, pattern: "harari"}
+  - {name: "Revista Borda (Apertura)", line: escola_argentina, pattern: "revista borda"}
+  - {name: "Henry Krutzen",       line: referencia, pattern: "krutzen"}
+  # --- lacanianos
+  - {name: "Jacques-Alain Miller", line: lacaniano, pattern: "\\bmiller\\b|jamiller"}
+  - {name: "Bruce Fink",          line: lacaniano, pattern: "\\bfink\\b"}
+  - {name: "Antonio Quinet",      line: lacaniano, pattern: "quinet"}
+  - {name: "Colette Soler",       line: lacaniano, pattern: "colette soler|\\bsoler\\b"}
+  - {name: "Jorge Forbes",        line: lacaniano, pattern: "forbes"}
+  - {name: "Éric Laurent",        line: lacaniano, pattern: "laurent, eric|\\blaurent\\b"}
+  - {name: "J.-D. Nasio",         line: lacaniano, pattern: "nasio"}
+  - {name: "Joël Dor",            line: lacaniano, pattern: "joel dor|joel dohr|\\bdor,? j\\b|\\bdor\\b.*(lacan|estrutura)"}
+  - {name: "Erik Porge",          line: lacaniano, pattern: "porge|tempo logico de lacan"}
+  - {name: "Vladimir Safatle",    line: lacaniano, pattern: "safatle"}
+  - {name: "Christian Dunker",    line: lacaniano, pattern: "dunker|mal_estar_sofrimento"}
+  - {name: "Marco Antonio Coutinho Jorge", line: lacaniano, pattern: "coutinho jorge|fundamentos da psicanalise de freud a lacan"}
+  - {name: "Marcus André Vieira", line: lacaniano, pattern: "marcus andre"}
+  - {name: "Antônio Teixeira",    line: lacaniano, pattern: "psicopatologia lacaniana"}
+  - {name: "Marcus do Rio Teixeira", line: lacaniano, pattern: "marcus do rio teixeira"}
+  - {name: "Serge Leclaire",      line: lacaniano, pattern: "leclaire"}
+  - {name: "Maud Mannoni",        line: lacaniano, pattern: "mannoni"}
+  - {name: "Philippe Lacadée",    line: lacaniano, pattern: "lacadee"}
+  - {name: "Jean-Jacques Tyszler", line: lacaniano, pattern: "tyszler"}
+  - {name: "Jean Guir",           line: lacaniano, pattern: "jean guir"}
+  - {name: "Malvine Zalcberg",    line: lacaniano, pattern: "zalcberg"}
+  - {name: "Ricardo Goldenberg",  line: lacaniano, pattern: "goldenberg"}
+  - {name: "Gérard Pommier",      line: lacaniano, pattern: "pommier"}
+  - {name: "Maria Anita Carneiro Ribeiro", line: lacaniano, pattern: "anita_carneiro|anita carneiro"}
+  - {name: "Will Greenshields",   line: lacaniano, pattern: "greenshields"}
+  - {name: "Moustapha Safouan",   line: lacaniano, pattern: "lacaniana i\\b"}
+  - {name: "Slavoj Žižek",        line: lacaniano, pattern: "como ler lacan|zizek"}
+  - {name: "Contardo Calligaris", line: lacaniano, pattern: "calligaris"}
+  - {name: "Maria Rita Kehl",     line: lacaniano, pattern: "kehl"}
+  - {name: "Marie-Claude Lambotte", line: lacaniano, pattern: "lambote|lambotte"}
+  - {name: "Françoise Dolto",     line: lacaniano, pattern: "dolto"}
+  - {name: "Nilda Sirelli",       line: lacaniano, pattern: "ou nao sou ou nao penso"}
+  - {name: "Ivete Villalba",      line: lacaniano, pattern: "villalba"}
+  - {name: "Lacan do Zero (curso)", line: lacaniano, pattern: "^lacan do zero/"}
+  - {name: "Philippe Julien",     line: lacaniano, pattern: "julien,? philippe|philippe julien"}
+  - {name: "Guy Rosolato",        line: lacaniano, pattern: "rosolato"}
+  - {name: "Durval Checchinato",  line: lacaniano, pattern: "checchinato"}
+  - {name: "Godofredo Cabas",     line: lacaniano, pattern: "\\bcabas\\b"}
+  - {name: "Jean-Baptiste Fages", line: lacaniano, pattern: "\\bfages\\b"}
+  - {name: "Márcio Peter de Souza Leite", line: lacaniano, pattern: "leite,? m\\.? p"}
+  - {name: "Elisabeth Roudinesco", line: lacaniano, pattern: "roudinesco|historia da psicanalisa na franca"}
+  - {name: "Dylan Evans",         line: referencia, pattern: "dylan evans|diccionario introductorio"}
+  - {name: "Pierre Kaufmann",     line: referencia, pattern: "kaufmann|dicionario enciclopedico"}
+  - {name: "Laplanche & Pontalis", line: referencia, pattern: "laplanche|vocabulario ?de ?psicanalise"}
+  - {name: "Luiz Hanns",          line: referencia, pattern: "hanns"}
+  - {name: "Dicionário Lacan",    line: referencia, pattern: "dicionario lacan"}
+  # --- comentadores de Freud
+  - {name: "Luiz Alfredo Garcia-Roza", line: comentador_freudiano, pattern: "garcia roza"}
+  - {name: "Renato Mezan",        line: comentador_freudiano, pattern: "mezan"}
+  - {name: "Joel Birman",         line: comentador_freudiano, pattern: "birman"}
+  - {name: "Jurandir Freire Costa", line: comentador_freudiano, pattern: "jurandir freire"}
+  - {name: "Alfredo Naffah Neto", line: comentador_freudiano, pattern: "naffah"}
+  - {name: "Luis Hornstein",      line: comentador_freudiano, pattern: "hornstein"}
+  - {name: "Hélio Pellegrino",    line: comentador_freudiano, pattern: "pell?egrino"}
+  - {name: "Manoel Tosta Berlinck", line: comentador_freudiano, pattern: "berlinck"}
+  - {name: "Abrão Goldgrub",      line: comentador_freudiano, pattern: "goldgrub"}
+  # --- fora do escopo (classificados para auditoria)
+  - {name: "Melanie Klein",       line: kleiniano, pattern: "\\bklein\\b"}
+  - {name: "Hanna Segal",         line: kleiniano, pattern: "segal"}
+  - {name: "Horacio Etchegoyen",  line: kleiniano, pattern: "etchegoyen"}
+  - {name: "David Zimerman",      line: outras_psicanalises, pattern: "zimerman|zimmerman"}
+  - {name: "D. W. Winnicott",     line: winnicottiano, pattern: "winnicott"}
+  - {name: "Sándor Ferenczi",     line: ferencziano, pattern: "ferenczi|transferencia e introjecao|tecnica ativa|elasticidade da tecnica|confusao de lingua|problema do fim da analise|psicanalise (i|ii|iv)\\b|crianca mal acolhida"}
+  - {name: "Otto Fenichel",       line: outras_psicanalises, pattern: "fenichel"}
+  - {name: "Joyce McDougall",     line: outras_psicanalises, pattern: "mcdougall"}
+  - {name: "Christopher Bollas",  line: outras_psicanalises, pattern: "bollas"}
+  - {name: "Heinrich Racker",     line: kleiniano, pattern: "racker"}
+  - {name: "Esther Bick",         line: kleiniano, pattern: "\\bbick\\b"}
+  - {name: "Susan Isaacs",        line: kleiniano, pattern: "isaacs"}
+  - {name: "Claude Geets",        line: kleiniano, pattern: "geets|esquizo ?paranoide"}
+  - {name: "René Spitz",          line: outras_psicanalises, pattern: "spitz"}
+  - {name: "Alexander Lowen",     line: outras_psicanalises, pattern: "lowen"}
+  - {name: "Daniel Lagache",      line: outras_psicanalises, pattern: "lagache"}
+  - {name: "Imre Lakatos",        line: epistemologia, pattern: "lakatos"}
+  - {name: "Alexandre Koyré",     line: epistemologia, pattern: "koyre"}
+  - {name: "Alan Chalmers",       line: epistemologia, pattern: "chalmers"}
+  - {name: "Alexandre Kojève",    line: epistemologia, pattern: "kojeve"}
+  - {name: "Cezar Mortari",       line: epistemologia, pattern: "mortari"}
+  - {name: "Kasner & Newman",     line: epistemologia, pattern: "kasner"}
+  - {name: "Fora do tema",        line: fora_do_tema, pattern: "contrato de locacao|piscina|gramatica|superinteressante|preciado|butler|illouz|rolnik|foucault|marx   sobre|dodds|botega|suicid|hifen|alienacao parental|borderline|familia em desordem|envelhecimento"}
+  - {name: "Luiz Felipe Possebon", line: autoral, pattern: "possebon"}
+  # --- fontes primárias (padrões específicos; vêm depois dos comentadores para que
+  #     "Eidelsztein - El seminario 20 de Jacques Lacan" seja atribuído ao comentador)
+  - {name: "Jacques Lacan", line: lacan, pattern: "\\blacan\\b[ ,.-]+(j\\.|jacques)?.*(seminario|seminaire|escritos|ecrits|televis|terceira|troisieme|paredes|mito individual|meu ensino|triunfo|conferencias|outros (arquivos|escritos)|north armorica|intromistura)|jacques lacan (o seminario|estou)|escritos jacques lacan|jacques lacan   o seminario|lacan gilleslapouge|discurso de toquio|^livros/seminarios lacan/"}
+  - {name: "Sigmund Freud", line: freud, pattern: "freud ?s\\.|s\\. freud|sigmund[ -]freud|freud sigmund|\\bfreud\\b.*(obras? completas?|cia das letras|companhia das letras|neurose, psicose)|^livros/freud vol|vol[ ._-]*(09|11)\\b.*(ratos|totem)|teoria da sexualidade"}
+  - {name: "Daniel Paul Schreber", line: fonte_clinica, pattern: "schreber|memoria de um doente dos nervos"}
+  # --- menção genérica: comentador ainda não identificado (nunca atribuir a Lacan/Freud por engano)
+  - {name: "Comentador lacaniano (não identificado)", line: lacaniano, pattern: "\\blacan|lacaniano|lacaniana"}
+  - {name: "Comentador freudiano (não identificado)", line: comentador_freudiano, pattern: "\\bfreud"}
+
+# Regras por pasta (aplicadas só se nenhum autor casar).
+folders:
+  - {pattern: "^livros/seminarios lacan/",      author: "Jacques Lacan", line: lacan}
+  - {pattern: "^livros/freud obras completas/", author: "Sigmund Freud", line: freud}
+  - {pattern: "^lacan do zero/",                author: "Lacan do Zero (curso)", line: lacaniano}
+  - {pattern: "^cep/",                          line: revisar}
+
+# Sinal de conteúdo para documentos "revisar": termos que indicam cada linha.
+content_signals:
+  lacaniano: ["lacan", "significante", "signifiant", "gozo", "goce", "jouissance", "objeto a", "objet a", "nome-do-pai", "grande outro", "sujeito barrado", "sinthoma", "sinthome"]
+  freud: ["freud", "recalque", "pulsao", "complexo de edipo", "inconsciente", "metapsicologia"]
+  kleiniano: ["klein", "posicao esquizo-paranoide", "posicao depressiva", "inveja", "reparacao", "identificacao projetiva", "objeto parcial"]
+  winnicottiano: ["winnicott", "objeto transicional", "holding", "mae suficientemente boa", "self verdadeiro"]
+  ferencziano: ["ferenczi", "confusao de lingua", "introjecao", "tecnica ativa", "elasticidade"]

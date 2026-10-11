@@ -1,0 +1,95 @@
+# Biblioteca Psicanalítica
+
+Freud, Lacan e as escolas lacanianas (incluindo a argentina) num único lugar, indexados para
+**estudo de conceitos com IA**: busca entre línguas com citação, leitura em contexto e
+**linha do tempo de cada conceito** (sessão a sessão nos seminários de Lacan).
+
+```
+acervo local (PDF/DOCX, somente leitura) ─┐
+Staferla (seminários FR, datas de sessão) ─┼─► pipeline ─► Postgres + pgvector ─► API REST  (/docs)
+OpenAlex (publicações novas, curadas) ────┘   (Docker)    texto · vetores ·      └► MCP (/mcp) ─► Claude
+                                                          conceitos · linha do tempo
+```
+
+## Começando
+
+Pré-requisitos: Docker Desktop (8 GB de RAM para o Docker) e ~5 GB livres.
+
+```bash
+make build            # imagem com Python, tesseract (OCR) e dependências travadas
+make up               # Postgres (localhost:5433) + API/MCP (localhost:8010)
+make migrate
+make inventory        # classifica o acervo → catalog/catalogo.csv
+make staferla         # baixa os 28 seminários (devagar, por cortesia ao site)
+make extract chunk concepts refresh
+make embed            # embeddings (1ª vez baixa o modelo BGE-M3, ~2 GB; CPU: algumas horas)
+make mcp-add          # registra a biblioteca no Claude Code
+```
+
+Depois, a qualquer momento: `make pipeline` (só processa o que é novo).
+
+Os arquivos do acervo estão no iCloud. Rode `make hydrate` antes da primeira extração para baixá-los.
+
+## Usando com o Claude
+
+Com o MCP registrado, pergunte em português, por exemplo:
+
+- "Explique o objeto a para um iniciante, com trechos de Lacan e de Eidelsztein."
+- "Como o gozo ganha peso ao longo dos seminários? Mostre a linha do tempo por sessão."
+- "Quais conceitos mais se associam ao sinthoma? O que dizer da passagem do Seminário 22 ao 23?"
+
+Ferramentas expostas: `buscar`, `ler_trecho`, `linha_do_tempo`, `conceitos_relacionados`,
+`listar_conceitos`, `listar_obras`, `estatisticas_acervo`.
+
+## Curadoria do escopo
+
+- **Entram:** Freud, Lacan, comentadores lacanianos e freudianos, escola argentina, dicionários.
+- **Ficam fora** (classificados, mas não indexados): Klein, Winnicott, Ferenczi, psicologia do
+  ego, epistemologia de apoio e material fora do tema.
+
+Regras em [config/scope.yaml](config/scope.yaml). Para mudar um arquivo específico, edite
+[catalog/overrides.csv](catalog/overrides.csv) (`incluir=sim|nao`, `linha`, `autor`...) e rode
+`make inventory`. Para os arquivos sem regra, `make probe` lê o início do texto e sugere a linha;
+a sugestão aparece em `catalog/catalogo.csv`.
+
+## Conceitos e linha do tempo
+
+O léxico multilíngue (pt/es/fr/en/de) fica em [config/concepts.yaml](config/concepts.yaml).
+Depois de editar, rode `make concepts`. A métrica é *ocorrências por 10 mil palavras* por período.
+O raciocínio está em [docs/adr/0002](docs/adr/0002-medicao-de-conceitos.md).
+
+```bash
+docker compose run --rm pipeline timeline gozo --granularidade sessao --linha lacan
+curl 'localhost:8010/conceitos/sinthoma/linha-do-tempo?granularidade=ano&linha=lacan'
+```
+
+## Novidades
+
+```bash
+make watch            # busca publicações novas no OpenAlex (SciELO, Redalyc, periódicos)
+make watch-list       # revisa as pendentes
+docker compose run --rm pipeline watch accept 12 15 --linha escola_argentina
+make staferla         # revalida o Staferla e baixa só o que mudou (via ETag)
+                      # se o site estiver fora do ar, usa as cópias do Internet Archive;
+                      # quando ele voltar, a próxima execução troca pelas versões atuais
+```
+
+Para automatizar, agende `make staferla watch pipeline` semanalmente (cron/launchd).
+
+## Estrutura
+
+```
+config/        escopo, obras canônicas, léxico de conceitos, fontes monitoradas
+catalog/       overrides.csv (curadoria, versionado) · catalogo.csv (gerado)
+db/migrations/ esquema SQL versionado (camadas bronze/silver/gold)
+src/psilib/    pipeline, extratores, busca, API, MCP
+docs/adr/      decisões de arquitetura
+tests/         testes unitários (make test)
+```
+
+## Uso e direitos
+
+Esta biblioteca é para estudo pessoal. O acervo local inclui obras protegidas por direitos
+autorais: não publique o banco nem trechos extensos. O monitor só baixa PDFs de acesso aberto.
+O Staferla é baixado com intervalo entre requisições e revalidado por ETag, sem baixar de novo
+o que não mudou.

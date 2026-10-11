@@ -1,0 +1,53 @@
+# Obras canônicas: permitem ligar edições/traduções diferentes à mesma obra
+# (ex.: Staferla FR "S11 FONDEMENTS" e o PDF PT "Livro 11") e datar o texto pelo
+# momento em que foi proferido — não pela data da edição.
+#
+# `cues`: regex sobre o nome do arquivo normalizado (minúsculas, sem acentos).
+# Cues de título vencem números no nome do arquivo (há arquivos com número errado).
+
+lacan_seminars:
+  - {n: "1",   years: [1953, 1954], fr: "Les écrits techniques de Freud", pt: "Os escritos técnicos de Freud", cues: "escritos tecnicos|ecrits techniques"}
+  - {n: "2",   years: [1954, 1955], fr: "Le moi dans la théorie de Freud et dans la technique de la psychanalyse", pt: "O eu na teoria de Freud e na técnica da psicanálise", cues: "o eu na teoria|le moi\\b"}
+  - {n: "3",   years: [1955, 1956], fr: "Les psychoses", pt: "As psicoses", cues: "as psicoses|psychoses"}
+  - {n: "4",   years: [1956, 1957], fr: "La relation d'objet", pt: "A relação de objeto", cues: "relacao de objeto|la relation"}
+  - {n: "5",   years: [1957, 1958], fr: "Les formations de l'inconscient", pt: "As formações do inconsciente", cues: "formacoes do inconsciente|formations"}
+  - {n: "6",   years: [1958, 1959], fr: "Le désir et son interprétation", pt: "O desejo e sua interpretação", cues: "desejo e sua interpretacao|le desir"}
+  - {n: "7",   years: [1959, 1960], fr: "L'éthique de la psychanalyse", pt: "A ética da psicanálise", cues: "etica da psicanalise|l'ethique"}
+  - {n: "8",   years: [1960, 1961], fr: "Le transfert", pt: "A transferência", cues: "a transferencia|le transfert"}
+  - {n: "9",   years: [1961, 1962], fr: "L'identification", pt: "A identificação", cues: "a identificacao|l'identification"}
+  - {n: "10",  years: [1962, 1963], fr: "L'angoisse", pt: "A angústia", cues: "livro[- ]10|a angustia|l'angoisse"}
+  - {n: "11",  years: [1964, 1964], fr: "Les quatre concepts fondamentaux de la psychanalyse", pt: "Os quatro conceitos fundamentais da psicanálise", cues: "quatro conceitos|fondements"}
+  - {n: "12",  years: [1964, 1965], fr: "Problèmes cruciaux pour la psychanalyse", pt: "Problemas cruciais para a psicanálise", cues: "problemas cruciais|problemes"}
+  - {n: "13",  years: [1965, 1966], fr: "L'objet de la psychanalyse", pt: "O objeto da psicanálise", cues: "objeto da psicanalise|objeto del psicoanalisis|l'objet"}
+  - {n: "14",  years: [1966, 1967], fr: "La logique du fantasme", pt: "A lógica do fantasma", cues: "logica do fantasma|logique"}
+  - {n: "15",  years: [1967, 1968], fr: "L'acte psychanalytique", pt: "O ato psicanalítico", cues: "ato psicanalitico|l'acte"}
+  - {n: "16",  years: [1968, 1969], fr: "D'un Autre à l'autre", pt: "De um Outro ao outro", cues: "de um outro ao outro|d'un autre"}
+  - {n: "17",  years: [1969, 1970], fr: "L'envers de la psychanalyse", pt: "O avesso da psicanálise", cues: "avesso da psicanalise|l'envers"}
+  - {n: "18",  years: [1971, 1971], fr: "D'un discours qui ne serait pas du semblant", pt: "De um discurso que não fosse semblante", cues: "nao fosse semblante|d'un discours"}
+  - {n: "19",  years: [1971, 1972], fr: "...ou pire", pt: "...ou pior", cues: "ou[- ]pior|ou pire"}
+  - {n: "19b", years: [1971, 1972], fr: "Le savoir du psychanalyste", pt: "O saber do psicanalista", cues: "saber do psicanalista|savoir du psychanalyste"}
+  - {n: "20",  years: [1972, 1973], fr: "Encore", pt: "Mais, ainda", cues: "mais[- ]ainda|encore"}
+  - {n: "21",  years: [1973, 1974], fr: "Les non-dupes errent", pt: "Os não-tolos erram", cues: "nao[- ]tolos|non-dupes"}
+  - {n: "22",  years: [1974, 1975], fr: "R.S.I.", pt: "R.S.I.", cues: "\\brsi\\b|r\\.s\\.i"}
+  - {n: "23",  years: [1975, 1976], fr: "Le sinthome", pt: "O sinthoma", cues: "sinthom"}
+  - {n: "24",  years: [1976, 1977], fr: "L'insu que sait de l'une-bévue s'aile à mourre", pt: "O insabido que sabe...", cues: "l'insu|no sabido|insabido"}
+  - {n: "25",  years: [1977, 1978], fr: "Le moment de conclure", pt: "O momento de concluir", cues: "momento de concluir|moment de conclure"}
+  - {n: "26",  years: [1978, 1979], fr: "La topologie et le temps", pt: "A topologia e o tempo", cues: "topologia y el tiempo|topologia e o tempo|topologie et le temps"}
+  - {n: "27",  years: [1979, 1980], fr: "Dissolution", pt: "Dissolução", cues: "disolucion|dissolu"}
+
+# Escritos e conferências de Lacan publicados no Staferla (página "Lacan").
+lacan_texts:
+  - {slug: la_lettre_volee,          year: 1956, title: "Le séminaire sur « La lettre volée »"}
+  - {slug: lituraterre,              year: 1971, title: "Lituraterre"}
+  - {slug: letourdit,                year: 1972, title: "L'étourdit"}
+  - {slug: radiophonie,              year: 1970, title: "Radiophonie"}
+  - {slug: television,               year: 1973, title: "Télévision"}
+  - {slug: subversion_du_sujet,      year: 1960, title: "Subversion du sujet et dialectique du désir"}
+  - {slug: la_chose_freudienne,      year: 1955, title: "La chose freudienne"}
+  - {slug: fonction_et_champ,        year: 1953, title: "Fonction et champ de la parole et du langage"}
+  - {slug: linstance_de_la_lettre,   year: 1957, title: "L'instance de la lettre dans l'inconscient"}
+  - {slug: kant_avec_sade,           year: 1963, title: "Kant avec Sade"}
+  - {slug: le_mythe_individuel_du_nevrose, year: 1953, title: "Le mythe individuel du névrosé"}
+  - {slug: la_troisieme,             year: 1974, title: "La troisième"}
+  - {slug: quatre_prefaces,          year: null, title: "Quatre préfaces"}
+  - {slug: trois_prefaces,           year: null, title: "Trois préfaces"}

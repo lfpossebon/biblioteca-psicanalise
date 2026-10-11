@@ -1,0 +1,86 @@
+name: psilib
+
+x-app: &app
+  build:
+    context: .
+    target: base
+  image: psilib:latest
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql://psi:psi@db:5432/psilib
+    CORPUS_DIR: /corpus
+    DATA_DIR: /data
+    CATALOG_DIR: /app/catalog
+  volumes:
+    - ${CORPUS_DIR_HOST:-..}:/corpus:ro      # acervo local, somente leitura
+    - ./data:/data                            # raw baixado (Staferla, OpenAlex) e OCR
+    - ./catalog:/app/catalog                  # curadoria (overrides.csv) e catálogo gerado
+    - ./config:/app/config:ro                 # léxico/escopo editáveis sem rebuild
+    - ./src:/app/src:ro                       # código ao vivo (desenvolvimento)
+    - hf_cache:/cache/huggingface             # modelos de embedding baixados
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: psi
+      POSTGRES_PASSWORD: psi
+      POSTGRES_DB: psilib
+    command: >
+      postgres -c shared_buffers=1GB -c maintenance_work_mem=1GB -c work_mem=64MB
+               -c max_parallel_maintenance_workers=4 -c effective_cache_size=3GB
+    shm_size: 1g
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U psi -d psilib"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # API REST (/docs) + servidor MCP (/mcp) para o Claude
+  app:
+    <<: *app
+    command: uvicorn psilib.api:app --host 0.0.0.0 --port 8010
+    ports:
+      - "127.0.0.1:8010:8010"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Execuções do pipeline: docker compose run --rm pipeline <etapa>
+  pipeline:
+    <<: *app
+    entrypoint: ["psilib"]
+    command: ["--help"]
+    profiles: ["pipeline"]
+
+  lab:
+    <<: *app
+    build:
+      context: .
+      target: lab
+    image: psilib-lab:latest
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - hf_cache:/cache/huggingface
+    ports:
+      - "127.0.0.1:8888:8888"
+    profiles: ["lab"]
+
+volumes:
+  pgdata:
+  hf_cache:

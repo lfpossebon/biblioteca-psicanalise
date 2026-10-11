@@ -1,0 +1,8 @@
+.venv
+data
+catalog
+notebooks
+.git
+**/__pycache__
+.pytest_cache
+.ruff_cache

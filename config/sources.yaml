@@ -1,0 +1,27 @@
+# Fontes externas monitoradas por `psilib watch`.
+
+openalex:
+  start_date: "2024-01-01"     # primeira varredura; depois é incremental
+  # Termos buscados em título+resumo. Pensados para o campo lacaniano em pt/es/fr/en.
+  queries:
+    - "Lacan"
+    - "lacaniano"
+    - "lacaniana"
+    - "lacanien"
+    - "lacanian"
+    - "psicoanálisis lacaniano"
+    - "jouissance"
+    - "sinthome"
+    - "Eidelsztein"
+    - "\"Nome-do-Pai\""
+  # Só tipos acadêmicos (exclui datasets, que poluem a busca)
+  types: [article, book, book-chapter, dissertation, preprint, review]
+  # O item só entra se título+resumo tiverem ao menos um destes termos (sem acento, minúsculas)
+  # Termos fortes apenas: "inconsciente" aparece em marketing; "jouissance" é termo jurídico em francês.
+  require_terms: [lacan, psicanal, psicoanal, psychanal, psychoanal, freud, sinthome, sinthoma]
+  fields: [id, doi, display_name, publication_year, publication_date, language, type,
+           authorships, primary_location, best_oa_location, open_access, abstract_inverted_index]
+
+staferla:
+  base_url: "http://staferla.free.fr/"
+  include_freud: false         # SE (en) e Gesammelte Werke (de): ~13 MB; ative quando quiser
