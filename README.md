@@ -137,6 +137,9 @@ tests/         unitários, integração (Postgres) e e2e da API (make test)
 
 ## Uso e direitos
 
+O código está sob a licença MIT ([LICENSE](LICENSE)). A licença cobre só o código: o acervo
+(textos, PDFs, banco de dados) não faz parte do repositório nem é distribuído.
+
 Esta biblioteca é para estudo pessoal. O acervo local inclui obras protegidas por direitos
 autorais: não publique o banco nem trechos extensos. O monitor só baixa PDFs de acesso aberto.
 O Staferla é baixado com intervalo entre requisições e revalidado por ETag, sem baixar de novo
