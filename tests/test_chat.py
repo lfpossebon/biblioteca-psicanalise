@@ -13,22 +13,21 @@ from fastapi.testclient import TestClient
 
 from psilib import chat, config, db, embeddings
 
-INVITES = "Ana Teste:codigo-ana,Bruno Teste:codigo-bruno"
+ANA = "11111111-1111-4111-8111-111111111111"
+BRUNO = "22222222-2222-4222-8222-222222222222"
+KEY_ANA, KEY_BRUNO = "ip-ana", "ip-bruno"
 
 
 # ------------------------------------------------------------------ unitários
 
 
-def test_invites_parsing(monkeypatch):
-    monkeypatch.setenv("CHAT_INVITES", " Ana Teste:abc , Maria: da Silva:xyz,invalido ")
-    config.settings.cache_clear()
-    try:
-        assert chat.invites() == {"abc": "Ana Teste", "xyz": "Maria: da Silva"}
-        with pytest.raises(chat.ChatError):
-            chat.invite_name("nao-existe")
-    finally:
-        monkeypatch.undo()
-        config.settings.cache_clear()
+def test_visitor_and_client_key():
+    assert chat.visitor_id(ANA) == ANA
+    assert chat.visitor_id("<script>") == "anonimo"
+    assert chat.visitor_id(None) == "anonimo"
+    k = chat.client_key("200.1.2.3")
+    assert len(k) == 16 and "200" not in k  # hash: o IP não é guardado
+    assert k == chat.client_key("200.1.2.3") != chat.client_key("200.1.2.4")
 
 
 def test_resolve_citations_drops_unseen_ids():
@@ -103,9 +102,6 @@ class FakeClient:
 
 @pytest.fixture
 def chat_env(seeded, monkeypatch):
-    monkeypatch.setenv("CHAT_INVITES", INVITES)
-    config.settings.cache_clear()
-
     def no_vectors(*_a, **_k):
         raise RuntimeError("sem modelo nos testes")
 
@@ -150,7 +146,7 @@ def _search_then_answer(answer_text: str):
 @pytest.mark.integration
 def test_answer_runs_tools_and_validates_citations(chat_env, monkeypatch):
     fake = _install(monkeypatch, _search_then_answer("O gozo excede o prazer [§{id}]. Invenção [§999999]."))
-    events = list(chat.answer("codigo-ana", "O que é o gozo?"))
+    events = list(chat.answer(ANA, KEY_ANA, "O que é o gozo?"))
 
     tipos = [e["tipo"] for e in events]
     assert tipos[0] == "conversa"
@@ -172,7 +168,7 @@ def test_answer_runs_tools_and_validates_citations(chat_env, monkeypatch):
 
     with db.connect() as conn:
         turn = conn.execute("select * from chat_turn where id = %s", (fim["turno"],)).fetchone()
-    assert turn["invite"] == "Ana Teste"
+    assert turn["visitor"] == ANA and turn["client_key"] == KEY_ANA
     assert turn["error"] is None
     assert turn["input_tokens"] == 2000 and turn["output_tokens"] == 400
     assert float(turn["cost_usd"]) == pytest.approx((2000 * 4 + 400 * 20 + 1000 * 0.2) / 1e6, rel=1e-3)
@@ -182,11 +178,11 @@ def test_answer_runs_tools_and_validates_citations(chat_env, monkeypatch):
 @pytest.mark.integration
 def test_follow_up_keeps_history(chat_env, monkeypatch):
     _install(monkeypatch, _search_then_answer("Resposta [§{id}]."))
-    first = list(chat.answer("codigo-ana", "O que é o gozo?"))
+    first = list(chat.answer(ANA, KEY_ANA, "O que é o gozo?"))
     conversa = first[0]["id"]
 
     fake = _install(monkeypatch, [_message([{"type": "text", "text": "Continuando."}], "end_turn")])
-    second = list(chat.answer("codigo-ana", "E o mais-de-gozar?", conversa))
+    second = list(chat.answer(ANA, KEY_ANA, "E o mais-de-gozar?", conversa))
     assert second[0]["id"] == conversa
     sent = fake.calls[0]["messages"]
     # pergunta 1, tool_use, tool_result, resposta 1, pergunta 2
@@ -195,26 +191,32 @@ def test_follow_up_keeps_history(chat_env, monkeypatch):
 
 
 @pytest.mark.integration
-def test_other_invite_cannot_continue_conversation(chat_env, monkeypatch):
+def test_other_visitor_cannot_continue_conversation(chat_env, monkeypatch):
     _install(monkeypatch, [_message([{"type": "text", "text": "Oi."}], "end_turn")])
-    conversa = list(chat.answer("codigo-ana", "Olá"))[0]["id"]
+    conversa = list(chat.answer(ANA, KEY_ANA, "Olá"))[0]["id"]
     fake = _install(monkeypatch, [_message([{"type": "text", "text": "Oi."}], "end_turn")])
-    events = list(chat.answer("codigo-bruno", "Olá", conversa))
+    events = list(chat.answer(BRUNO, KEY_BRUNO, "Olá", conversa))
     assert events[0]["id"] != conversa  # vira conversa nova, sem o histórico da Ana
     assert len(fake.calls[0]["messages"]) == 1
 
 
 @pytest.mark.integration
-def test_invalid_invite_and_daily_limit(chat_env, monkeypatch):
-    assert list(chat.answer("errado", "Olá")) == [{"tipo": "erro", "texto": "Código de convite inválido."}]
+def test_daily_limit_by_connection_and_budget(chat_env, monkeypatch):
+    assert list(chat.answer(ANA, KEY_ANA, "   ")) == [{"tipo": "erro", "texto": "Escreva uma pergunta."}]
 
     monkeypatch.setenv("CHAT_DAILY_LIMIT", "1")
     config.settings.cache_clear()
     _install(monkeypatch, [_message([{"type": "text", "text": "Oi."}], "end_turn")])
-    list(chat.answer("codigo-bruno", "Primeira"))
-    events = list(chat.answer("codigo-bruno", "Segunda"))
+    list(chat.answer(BRUNO, "ip-limite", "Primeira"))
+    # o limite é da conexão (IP), não do id do navegador: trocar de navegador não o zera
+    events = list(chat.answer("33333333-3333-4333-8333-333333333333", "ip-limite", "Segunda"))
     assert events[0]["tipo"] == "erro"
-    assert "limite" in events[0]["texto"]
+    assert "30" not in events[0]["texto"] and "limite de 1 perguntas" in events[0]["texto"]
+
+    monkeypatch.setenv("CHAT_DAILY_BUDGET_USD", "0")
+    config.settings.cache_clear()
+    events = list(chat.answer(ANA, "ip-novo", "Terceira"))
+    assert "limite diário de uso" in events[0]["texto"]
 
 
 @pytest.mark.integration
@@ -225,7 +227,7 @@ def test_last_step_forbids_tools(chat_env, monkeypatch):
     )
     script = [loop] * (chat.MAX_STEPS - 1) + [_message([{"type": "text", "text": "Final."}], "end_turn")]
     fake = _install(monkeypatch, script)
-    events = list(chat.answer("codigo-ana", "Pergunta que gera laço"))
+    events = list(chat.answer(ANA, KEY_ANA, "Pergunta que gera laço"))
     assert events[-1]["tipo"] == "fim"
     assert fake.calls[-1]["tool_choice"] == {"type": "none"}
     assert all(c["tool_choice"] == {"type": "auto"} for c in fake.calls[:-1])
@@ -245,23 +247,23 @@ def test_public_mode_exposes_only_chat(chat_env, monkeypatch):
         assert client.get("/mcp").status_code == 404
         assert client.get("/chat").status_code == 200
         assert client.get("/", follow_redirects=False).headers["location"] == "/chat"
-        assert client.post("/chat/api/sessao", headers={"X-Convite": "errado"}).status_code == 401
-        assert client.post("/chat/api/sessao", headers={"X-Convite": "codigo-ana"}).json() == {
-            "nome": "Ana Teste"
-        }
+        assert client.post("/chat/api/sessao").status_code in (404, 405)  # sem convite: não há sessão
 
         _install(monkeypatch, _search_then_answer("Resposta [§{id}]."))
         r = client.post(
-            "/chat/api/mensagem", json={"pergunta": "O que é o gozo?"}, headers={"X-Convite": "codigo-ana"}
+            "/chat/api/mensagem",
+            json={"pergunta": "O que é o gozo?"},
+            headers={"X-Visitante": ANA, "X-Forwarded-For": "200.1.2.3, 10.0.0.1"},
         )
         events = [json.loads(line[6:]) for line in r.text.split("\n\n") if line.startswith("data: ")]
         assert events[-1]["tipo"] == "fim"
         turno = events[-1]["turno"]
         fb = {"turno": turno, "valor": -1, "comentario": "faltou o Seminário 7"}
-        assert (
-            client.post("/chat/api/feedback", json=fb, headers={"X-Convite": "codigo-ana"}).status_code == 200
-        )
+        assert client.post("/chat/api/feedback", json=fb, headers={"X-Visitante": ANA}).status_code == 200
 
     with db.connect() as conn:
-        row = conn.execute("select feedback, comment from chat_turn where id = %s", (turno,)).fetchone()
-    assert row == {"feedback": -1, "comment": "faltou o Seminário 7"}
+        row = conn.execute(
+            "select feedback, comment, client_key from chat_turn where id = %s", (turno,)
+        ).fetchone()
+    assert row["feedback"] == -1 and row["comment"] == "faltou o Seminário 7"
+    assert row["client_key"] == chat.client_key("200.1.2.3")  # IP do cliente, não do proxy

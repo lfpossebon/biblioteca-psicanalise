@@ -49,8 +49,8 @@ class Settings(BaseSettings):
     # Chat da POC (a chave vem de ANTHROPIC_API_KEY, lida pelo próprio SDK)
     chat_model: str = "claude-opus-5-5"
     chat_effort: str = "medium"  # low | medium | high | xhigh | max
-    chat_invites: str = ""  # "Nome:código,Outro nome:código2"
-    chat_daily_limit: int = 30  # perguntas por convidado por dia
+    chat_daily_limit: int = 30  # perguntas por conexão (hash do IP) por dia
+    chat_ip_salt: str = "psilib-poc"  # sal do hash do IP; troque na nuvem (CHAT_IP_SALT)
     chat_daily_budget_usd: float = 15.0  # teto global de gasto por dia
     chat_max_turns: int = 12  # perguntas por conversa (o custo cresce com o histórico)
     # Preços em US$ por milhão de tokens (Claude Opus 5.5), para o controle de gasto

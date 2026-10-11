@@ -11,7 +11,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Query
+from fastapi import APIRouter, FastAPI, Header, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -119,7 +119,15 @@ def estatisticas():
 
 
 chat_router = APIRouter(prefix="/chat")
-Convite = Annotated[str | None, Header(alias="X-Convite")]
+Visitante = Annotated[str | None, Header(alias="X-Visitante")]
+
+
+def _client_ip(request: Request) -> str | None:
+    # Atrás do proxy da plataforma (Railway), o IP do cliente vem nos cabeçalhos de encaminhamento.
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
 
 
 class Mensagem(BaseModel):
@@ -138,19 +146,13 @@ def chat_page():
     return FileResponse(STATIC / "chat.html", headers={"Cache-Control": "no-cache"})
 
 
-@chat_router.post("/api/sessao")
-def chat_sessao(convite: Convite = None):
-    try:
-        return {"nome": chat.invite_name(convite)}
-    except chat.ChatError as e:
-        raise HTTPException(401, str(e)) from e
-
-
 @chat_router.post("/api/mensagem")
-def chat_mensagem(body: Mensagem, convite: Convite = None):
+def chat_mensagem(body: Mensagem, request: Request, visitante: Visitante = None):
+    visitor, key = chat.visitor_id(visitante), chat.client_key(_client_ip(request))
+
     # Gerador síncrono: o Starlette o consome no thread pool, sem bloquear o event loop (Deck 03).
     def sse():
-        for event in chat.answer(convite, body.pergunta, body.conversa):
+        for event in chat.answer(visitor, key, body.pergunta, body.conversa):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
@@ -161,11 +163,8 @@ def chat_mensagem(body: Mensagem, convite: Convite = None):
 
 
 @chat_router.post("/api/feedback")
-def chat_feedback(body: Feedback, convite: Convite = None):
-    try:
-        chat.feedback(convite, body.turno, body.valor, body.comentario)
-    except chat.ChatError as e:
-        raise HTTPException(401, str(e)) from e
+def chat_feedback(body: Feedback, visitante: Visitante = None):
+    chat.feedback(chat.visitor_id(visitante), body.turno, body.valor, body.comentario)
     return {"ok": True}
 
 

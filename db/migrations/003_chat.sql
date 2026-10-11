@@ -1,10 +1,12 @@
--- Chat da POC: conversas com o Claude sobre o acervo, com custo e feedback dos convidados.
+-- Chat da POC: conversas com o Claude sobre o acervo, com custo e feedback dos visitantes.
+-- Acesso aberto e anônimo: `visitor` é um id gerado no navegador; `client_key` é um hash do IP
+-- (nunca o IP em si), usado só para o limite diário de perguntas.
 
 -- Histórico completo enviado à API a cada turno (append-only: blocos de pensamento e de
 -- ferramenta voltam exatamente como vieram).
 create table chat_conversation (
     id          uuid primary key,
-    invite      text not null,                 -- nome do convidado (do código de convite)
+    visitor     text not null,                 -- id anônimo do navegador (dono da conversa)
     messages    jsonb not null default '[]'::jsonb,
     -- Trechos que as ferramentas devolveram nesta conversa: só eles podem ser citados.
     seen        jsonb not null default '{}'::jsonb,
@@ -12,11 +14,12 @@ create table chat_conversation (
     updated_at  timestamptz not null default now()
 );
 
--- Um turno = uma pergunta do convidado e a resposta final. É a base da análise da POC.
+-- Um turno = uma pergunta do visitante e a resposta final. É a base da análise da POC.
 create table chat_turn (
     id              bigserial primary key,
     conversation_id uuid not null references chat_conversation(id) on delete cascade,
-    invite          text not null,
+    visitor         text not null,
+    client_key      text not null,               -- hash do IP (limite diário)
     question        text not null,
     answer          text,
     citations       jsonb not null default '[]'::jsonb,  -- trechos citados (chunk_id + citação)
@@ -35,5 +38,5 @@ create table chat_turn (
     comment         text,
     created_at      timestamptz not null default now()
 );
-create index on chat_turn (invite, created_at);
+create index on chat_turn (client_key, created_at);
 create index on chat_turn (created_at);

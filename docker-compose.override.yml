@@ -1,5 +1,5 @@
 # Desenvolvimento ("inner loop"): carregado automaticamente por `docker compose`.
-# Monta o código ao vivo — mudanças em src/ valem no próximo `pipeline` sem rebuild
+# Monta o código e as migrações ao vivo — mudanças em src/ e db/ valem no próximo `pipeline` sem rebuild
 # (a API precisa de `docker compose restart app`).
 #
 # Para rodar exatamente o que está na imagem (como em produção), ignore este arquivo:
@@ -8,6 +8,8 @@ services:
   app:
     volumes:
       - ./src:/app/src:ro
+      - ./db:/app/db:ro
   pipeline:
     volumes:
       - ./src:/app/src:ro
+      - ./db:/app/db:ro

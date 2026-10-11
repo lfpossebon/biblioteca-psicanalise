@@ -9,6 +9,7 @@ Cada pergunta é um laço: chamada ao Claude em streaming → ferramentas pedida
 → ... até a resposta final. O gerador `answer` emite eventos para a interface (status, texto, fim).
 """
 
+import hashlib
 import json
 import logging
 import re
@@ -74,7 +75,7 @@ Lingua = Literal["pt", "fr", "es", "en", "de"]
 
 
 class ChatError(Exception):
-    """Erro mostrado ao convidado (limite atingido, convite inválido...)."""
+    """Erro mostrado ao visitante (limite atingido, pergunta inválida...)."""
 
 
 # ------------------------------------------------------------------ ferramentas
@@ -262,37 +263,36 @@ def resolve_citations(text: str, seen: dict) -> tuple[list[dict], list[int]]:
     return notes, invalid
 
 
-# ------------------------------------------------------------------ convites, limites, custo
+# ------------------------------------------------------------------ visitantes, limites, custo
 
 
-def invites() -> dict[str, str]:
-    """código → nome do convidado, a partir de CHAT_INVITES ("Nome:código,Outro:código2")."""
-    out = {}
-    for item in settings().chat_invites.split(","):
-        name, _, code = item.strip().rpartition(":")
-        if name and code:
-            out[code.strip()] = name.strip()
-    return out
+def client_key(ip: str | None) -> str:
+    """Hash do IP com sal: basta para o limite diário e não guarda o IP (LGPD)."""
+    raw = f"{settings().chat_ip_salt}:{ip or 'desconhecido'}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def invite_name(code: str | None) -> str:
-    name = invites().get((code or "").strip())
-    if not name:
-        raise ChatError("Código de convite inválido.")
-    return name
+def visitor_id(raw: str | None) -> str:
+    """Id anônimo gerado no navegador (uuid). Valores fora do formato viram 'anonimo'."""
+    try:
+        return str(uuid.UUID((raw or "").strip()))
+    except ValueError:
+        return "anonimo"
 
 
-def check_limits(conn, invite: str, conversation_id: uuid.UUID | None) -> None:
+def check_limits(conn, key: str, conversation_id: uuid.UUID | None) -> None:
     s = settings()
     row = conn.execute(
-        """select count(*) filter (where invite = %(i)s) as minhas, coalesce(sum(cost_usd), 0) as custo
+        """select count(*) filter (where client_key = %(k)s) as minhas, coalesce(sum(cost_usd), 0) as custo
            from chat_turn where created_at >= current_date""",
-        {"i": invite},
+        {"k": key},
     ).fetchone()
+    if float(row["custo"]) >= s.chat_daily_budget_usd:
+        raise ChatError(
+            "O limite diário de uso desta prova de conceito foi atingido. Tente novamente amanhã."
+        )
     if row["minhas"] >= s.chat_daily_limit:
         raise ChatError(f"Você atingiu o limite de {s.chat_daily_limit} perguntas por dia. Volte amanhã!")
-    if float(row["custo"]) >= s.chat_daily_budget_usd:
-        raise ChatError("O limite diário de uso da POC foi atingido. Tente novamente amanhã.")
     if conversation_id:
         n = conn.execute(
             "select count(*) as n from chat_turn where conversation_id = %s and error is null",
@@ -315,7 +315,9 @@ def cost_usd(usage: dict) -> float:
 # ------------------------------------------------------------------ o turno
 
 
-def _load_conversation(conn, conversation_id: str | None, invite: str) -> tuple[uuid.UUID | None, list, dict]:
+def _load_conversation(
+    conn, conversation_id: str | None, visitor: str
+) -> tuple[uuid.UUID | None, list, dict]:
     if not conversation_id:
         return None, [], {}
     try:
@@ -323,9 +325,9 @@ def _load_conversation(conn, conversation_id: str | None, invite: str) -> tuple[
     except ValueError:
         return None, [], {}
     row = conn.execute(
-        "select invite, messages, seen from chat_conversation where id = %s", (cid,)
+        "select visitor, messages, seen from chat_conversation where id = %s", (cid,)
     ).fetchone()
-    if not row or row["invite"] != invite:
+    if not row or row["visitor"] != visitor:
         return None, [], {}
     return cid, row["messages"], row["seen"]
 
@@ -334,22 +336,26 @@ def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic()
 
 
-def answer(invite_code: str | None, question: str, conversation_id: str | None = None) -> Iterator[dict]:
-    """Responde uma pergunta. Emite eventos: conversa, status, texto, fim | erro."""
+def answer(visitor: str, key: str, question: str, conversation_id: str | None = None) -> Iterator[dict]:
+    """Responde uma pergunta do visitante (`key`: hash do IP, para o limite diário).
+    Emite eventos: conversa, status, texto, fim | erro."""
     s = settings()
     t0 = time.monotonic()
     question = question.strip()
     try:
-        invite = invite_name(invite_code)
         if not question:
             raise ChatError("Escreva uma pergunta.")
         if len(question) > 4000:
             raise ChatError("A pergunta é longa demais (máximo de 4.000 caracteres).")
         with connect() as conn:
-            cid, messages, seen = _load_conversation(conn, conversation_id, invite)
-            check_limits(conn, invite, cid)
+            cid, messages, seen = _load_conversation(conn, conversation_id, visitor)
+            check_limits(conn, key, cid)
     except ChatError as e:
         yield {"tipo": "erro", "texto": str(e)}
+        return
+    except Exception:
+        log.exception("falha ao preparar a pergunta")
+        yield {"tipo": "erro", "texto": "Ocorreu um erro inesperado. Tente de novo."}
         return
 
     new_conversation = cid is None
@@ -454,39 +460,39 @@ def answer(invite_code: str | None, question: str, conversation_id: str | None =
         # tool_use sem tool_result e invalidaria a conversa.
         if error is None:
             conn.execute(
-                """insert into chat_conversation (id, invite, messages, seen) values (%s, %s, %s, %s)
+                """insert into chat_conversation (id, visitor, messages, seen) values (%s, %s, %s, %s)
                    on conflict (id) do update set messages = excluded.messages, seen = excluded.seen,
                        updated_at = now()""",
-                (cid, invite, json.dumps(messages), json.dumps(seen)),
+                (cid, visitor, json.dumps(messages), json.dumps(seen)),
             )
         elif new_conversation:
             conn.execute(
-                "insert into chat_conversation (id, invite) values (%s, %s) on conflict do nothing",
-                (cid, invite),
+                "insert into chat_conversation (id, visitor) values (%s, %s) on conflict do nothing",
+                (cid, visitor),
             )
         turn_id = conn.execute(
-            """insert into chat_turn (conversation_id, invite, question, answer, citations, invalid_citations,
-                   tool_calls, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-                   cost_usd, latency_ms, stop_reason, error)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
+            """insert into chat_turn (conversation_id, visitor, client_key, question, answer, citations,
+                   invalid_citations, tool_calls, model, input_tokens, output_tokens, cache_read_tokens,
+                   cache_write_tokens, cost_usd, latency_ms, stop_reason, error)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
             (
-                cid, invite, question, final_text, json.dumps(notes), json.dumps(invalid),
+                cid, visitor, key, question, final_text, json.dumps(notes), json.dumps(invalid),
                 json.dumps(tool_calls, default=str), model_used, usage["input_tokens"], usage["output_tokens"],
                 usage["cache_read_tokens"], usage["cache_write_tokens"], cost, latency, stop_reason, error,
             ),
         ).fetchone()["id"]  # fmt: skip
         conn.commit()
 
-    log.info("chat: %s | %d ferramentas | US$ %.4f | %d ms", invite, len(tool_calls), cost, latency)
+    log.info("chat: %s | %d ferramentas | US$ %.4f | %d ms", visitor[:8], len(tool_calls), cost, latency)
     if error is None:
         yield {"tipo": "fim", "turno": turn_id, "citacoes": notes, "invalidas": invalid}
 
 
-def feedback(invite_code: str | None, turn_id: int, value: int, comment: str | None) -> None:
-    invite = invite_name(invite_code)
+def feedback(visitor: str, turn_id: int, value: int, comment: str | None) -> None:
+    """Avaliação de uma resposta; só o visitante que perguntou pode avaliá-la."""
     with connect() as conn:
         conn.execute(
-            "update chat_turn set feedback = %s, comment = %s where id = %s and invite = %s",
-            (value, (comment or "").strip()[:2000] or None, turn_id, invite),
+            "update chat_turn set feedback = %s, comment = %s where id = %s and visitor = %s",
+            (value, (comment or "").strip()[:2000] or None, turn_id, visitor),
         )
         conn.commit()
