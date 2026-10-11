@@ -149,6 +149,55 @@ def stats():
     _print(do_stats())
 
 
+# ------------------------------------------------------------------ chat da POC
+
+
+@app.command()
+def convites(nomes: list[str]):
+    """Gera códigos de convite para o chat. Cole a linha CHAT_INVITES no .env (ou no Railway)."""
+    import secrets
+
+    from psilib.chat import invites
+    from psilib.config import settings
+
+    current = settings().chat_invites.strip()
+    known = set(invites().values())
+    new = []
+    for nome in nomes:
+        if nome in known:
+            typer.echo(f"já existe: {nome}")
+            continue
+        code = secrets.token_urlsafe(6).replace("-", "x").replace("_", "y")
+        new.append(f"{nome}:{code}")
+        typer.echo(f"{nome}: {code}")
+    if new:
+        typer.echo("\nCHAT_INVITES=" + ",".join(filter(None, [current, *new])))
+
+
+@app.command("chat-relatorio")
+def chat_relatorio(dias: int = 30):
+    """Uso da POC por convidado: perguntas, custo, avaliações e comentários."""
+    with connect() as conn:
+        rows = conn.execute(
+            """select invite as convidado, count(*) as perguntas,
+                      count(*) filter (where feedback = 1) as uteis,
+                      count(*) filter (where feedback = -1) as nao_uteis,
+                      count(*) filter (where error is not null) as erros,
+                      round(sum(cost_usd), 2) as custo_usd,
+                      round(avg(latency_ms) / 1000.0, 1) as seg_medio
+               from chat_turn where created_at >= now() - make_interval(days => %s)
+               group by 1 order by 2 desc""",
+            (dias,),
+        ).fetchall()
+        comments = conn.execute(
+            """select created_at::date as dia, invite, feedback, question, comment from chat_turn
+               where comment is not null and created_at >= now() - make_interval(days => %s)
+               order by created_at desc limit 30""",
+            (dias,),
+        ).fetchall()
+    _print({"por_convidado": rows, "comentarios": comments})
+
+
 # ------------------------------------------------------------------ monitor
 
 

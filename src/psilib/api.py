@@ -1,40 +1,51 @@
-"""API REST (FastAPI, docs em /docs) + servidor MCP (/mcp) no mesmo processo.
+"""API REST (FastAPI, docs em /docs) + servidor MCP (/mcp) + chat da POC (/chat), no mesmo processo.
 
-Um processo só = um modelo de embeddings carregado na memória para as duas interfaces.
+Um processo só = um modelo de embeddings carregado na memória para todas as interfaces.
+Com PUBLIC_MODE=true (implantação aberta na internet) só o chat e os health checks são servidos:
+a API REST, o /docs e o MCP — que expõem o texto integral do acervo — ficam desligados.
 """
 
+import json
 import threading
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
+from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import FastAPI, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
-from psilib import embeddings, service
+from psilib import chat, embeddings, service
 from psilib.config import settings
-from psilib.mcp_server import mcp, transport_security
 from psilib.service import Filters
 
-_mcp_app = mcp.streamable_http_app(transport_security=transport_security(), host="0.0.0.0")
+STATIC = Path(__file__).parent / "static"
+
+# ------------------------------------------------------------------ health checks
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    # Carrega o modelo de embeddings em background: a API sobe na hora e /ready só fica
-    # verde quando a primeira busca não vai mais pagar o cold start (~2 GB na memória).
-    if settings().embedding_warmup:
-        threading.Thread(target=embeddings.warmup, name="embeddings-warmup", daemon=True).start()
-    async with _mcp_app.router.lifespan_context(_mcp_app):
-        yield
+health_router = APIRouter()
 
 
-app = FastAPI(
-    title="Biblioteca Psicanalítica",
-    description="Freud, Lacan e escolas lacanianas — busca com citação e linha do tempo de conceitos. "
-    "Servidor MCP em /mcp.",
-    version="0.1.0",
-    lifespan=lifespan,
-)
+@health_router.get("/health")
+def health():
+    """Liveness: o processo está de pé."""
+    return {"ok": True}
+
+
+@health_router.get("/ready")
+def ready():
+    """Readiness: banco acessível e modelo de embeddings carregado. 503 enquanto não estiver pronto."""
+    checks = {"banco": service.db_ok(), "embeddings": embeddings.is_ready()}
+    return JSONResponse(
+        {"pronto": all(checks.values()), **checks}, status_code=200 if all(checks.values()) else 503
+    )
+
+
+# ------------------------------------------------------------------ API REST interna
+
+
+internal_router = APIRouter()
 
 
 def _filters(linha, autor, obra, lingua, ano_de, ano_ate, fonte) -> Filters:
@@ -46,22 +57,7 @@ def _filters(linha, autor, obra, lingua, ano_de, ano_ate, fonte) -> Filters:
 Linha = Annotated[list[str] | None, Query(description="freud, lacan, lacaniano, escola_argentina...")]
 
 
-@app.get("/health")
-def health():
-    """Liveness: o processo está de pé."""
-    return {"ok": True}
-
-
-@app.get("/ready")
-def ready():
-    """Readiness: banco acessível e modelo de embeddings carregado. 503 enquanto não estiver pronto."""
-    checks = {"banco": service.db_ok(), "embeddings": embeddings.is_ready()}
-    return JSONResponse(
-        {"pronto": all(checks.values()), **checks}, status_code=200 if all(checks.values()) else 503
-    )
-
-
-@app.get("/busca")
+@internal_router.get("/busca")
 def busca(
     q: str,
     k: int = 10,
@@ -77,17 +73,17 @@ def busca(
     return service.search(q, k, _filters(linha, autor, obra, lingua, ano_de, ano_ate, fonte), mode=modo)
 
 
-@app.get("/trechos/{chunk_id}")
+@internal_router.get("/trechos/{chunk_id}")
 def trecho(chunk_id: int, contexto: int = 1):
     return service.read_chunk(chunk_id, contexto)
 
 
-@app.get("/conceitos")
+@internal_router.get("/conceitos")
 def conceitos():
     return service.list_concepts()
 
 
-@app.get("/conceitos/{conceito}/linha-do-tempo")
+@internal_router.get("/conceitos/{conceito}/linha-do-tempo")
 def linha_do_tempo(
     conceito: str,
     granularidade: Literal["sessao", "ano", "obra"] = "obra",
@@ -104,20 +100,116 @@ def linha_do_tempo(
     return service.timeline(conceito, granularidade, f, min_palavras)
 
 
-@app.get("/conceitos/{conceito}/relacionados")
+@internal_router.get("/conceitos/{conceito}/relacionados")
 def relacionados(conceito: str, limite: int = 15):
     return service.cooccurrence(conceito, limite)
 
 
-@app.get("/obras")
+@internal_router.get("/obras")
 def obras(linha: Linha = None, autor: str | None = None, lingua: str | None = None, fonte: str | None = None):
     return service.list_works(_filters(linha, autor, None, lingua, None, None, fonte))
 
 
-@app.get("/estatisticas")
+@internal_router.get("/estatisticas")
 def estatisticas():
     return service.stats()
 
 
-# Por último: tudo que não é rota REST vai para o app MCP (que atende em /mcp).
-app.mount("/", _mcp_app)
+# ------------------------------------------------------------------ chat da POC
+
+
+chat_router = APIRouter(prefix="/chat")
+Convite = Annotated[str | None, Header(alias="X-Convite")]
+
+
+class Mensagem(BaseModel):
+    pergunta: str = Field(max_length=4000)
+    conversa: str | None = None
+
+
+class Feedback(BaseModel):
+    turno: int
+    valor: Literal[1, -1]
+    comentario: str | None = Field(None, max_length=2000)
+
+
+@chat_router.get("", include_in_schema=False)
+def chat_page():
+    return FileResponse(STATIC / "chat.html", headers={"Cache-Control": "no-cache"})
+
+
+@chat_router.post("/api/sessao")
+def chat_sessao(convite: Convite = None):
+    try:
+        return {"nome": chat.invite_name(convite)}
+    except chat.ChatError as e:
+        raise HTTPException(401, str(e)) from e
+
+
+@chat_router.post("/api/mensagem")
+def chat_mensagem(body: Mensagem, convite: Convite = None):
+    # Gerador síncrono: o Starlette o consome no thread pool, sem bloquear o event loop (Deck 03).
+    def sse():
+        for event in chat.answer(convite, body.pergunta, body.conversa):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        sse(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@chat_router.post("/api/feedback")
+def chat_feedback(body: Feedback, convite: Convite = None):
+    try:
+        chat.feedback(convite, body.turno, body.valor, body.comentario)
+    except chat.ChatError as e:
+        raise HTTPException(401, str(e)) from e
+    return {"ok": True}
+
+
+# ------------------------------------------------------------------ montagem
+
+
+def create_app() -> FastAPI:
+    public = settings().public_mode
+    mcp_app = None
+    if not public:
+        from psilib.mcp_server import mcp, transport_security
+
+        mcp_app = mcp.streamable_http_app(transport_security=transport_security(), host="0.0.0.0")
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Carrega o modelo de embeddings em background: a API sobe na hora e /ready só fica
+        # verde quando a primeira busca não vai mais pagar o cold start (~2 GB na memória).
+        if settings().embedding_warmup:
+            threading.Thread(target=embeddings.warmup, name="embeddings-warmup", daemon=True).start()
+        async with AsyncExitStack() as stack:
+            if mcp_app is not None:
+                await stack.enter_async_context(mcp_app.router.lifespan_context(mcp_app))
+            yield
+
+    app = FastAPI(
+        title="Biblioteca Psicanalítica",
+        description="Freud, Lacan e escolas lacanianas — busca com citação e linha do tempo de conceitos. "
+        "Servidor MCP em /mcp; chat em /chat.",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None if public else "/docs",
+        redoc_url=None if public else "/redoc",
+        openapi_url=None if public else "/openapi.json",
+    )
+    app.include_router(health_router)
+    app.include_router(chat_router)
+    if public:
+        app.add_api_route("/", lambda: RedirectResponse("/chat"), include_in_schema=False)
+    else:
+        app.include_router(internal_router)
+        # Por último: tudo que não é rota REST vai para o app MCP (que atende em /mcp).
+        app.mount("/", mcp_app)
+    return app
+
+
+app = create_app()

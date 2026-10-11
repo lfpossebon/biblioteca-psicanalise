@@ -43,6 +43,22 @@ class Settings(BaseSettings):
     http_delay_seconds: float = 2.0  # cortesia com sites pequenos como o Staferla
     openalex_mailto: str | None = None
 
+    # Implantação pública (POC): só o chat é servido; API REST, /docs e MCP ficam desligados.
+    public_mode: bool = False
+
+    # Chat da POC (a chave vem de ANTHROPIC_API_KEY, lida pelo próprio SDK)
+    chat_model: str = "claude-opus-5-5"
+    chat_effort: str = "medium"  # low | medium | high | xhigh | max
+    chat_invites: str = ""  # "Nome:código,Outro nome:código2"
+    chat_daily_limit: int = 30  # perguntas por convidado por dia
+    chat_daily_budget_usd: float = 15.0  # teto global de gasto por dia
+    chat_max_turns: int = 12  # perguntas por conversa (o custo cresce com o histórico)
+    # Preços em US$ por milhão de tokens (Claude Opus 5.5), para o controle de gasto
+    chat_price_input: float = 4.0
+    chat_price_output: float = 20.0
+    chat_price_cache_read: float = 0.20
+    chat_price_cache_write: float = 5.0
+
 
 @lru_cache
 def settings() -> Settings:

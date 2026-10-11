@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biblioteca Psicanalítica</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #faf8f5; --surface: #ffffff; --text: #1f1d1a; --muted: #6b665e; --border: #e4dfd6;
+    --accent: #7a3e2e; --accent-soft: #f3e8e3; --error: #a33; --user: #efeae2;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #181715; --surface: #211f1c; --text: #ece7df; --muted: #a49d92; --border: #36322c;
+      --accent: #e0a08a; --accent-soft: #3a2a24; --error: #f08a8a; --user: #2b2824;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 2; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+  h1 { font-family: var(--serif); font-size: 1.25rem; margin: 0; font-weight: 600; }
+  .who { font-size: .85rem; color: var(--muted); display: flex; gap: 12px; align-items: center; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 6px 12px; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .notice { font-size: .85rem; color: var(--muted); background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin: 20px 0; }
+  .notice strong { color: var(--text); }
+  #gate { margin-top: 12vh; text-align: center; }
+  #gate p { color: var(--muted); }
+  #gate form { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  input[type=text], textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  input[type=text]:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #gate-erro { color: var(--error); min-height: 1.5em; }
+  #log { padding-bottom: 180px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .examples button { font-size: .85rem; text-align: left; }
+  .msg { margin: 22px 0; }
+  .msg.user .bubble { background: var(--user); border-radius: 12px; padding: 10px 14px; white-space: pre-wrap; margin-left: 15%; }
+  .msg.bot .answer { font-family: var(--serif); font-size: 1.06rem; line-height: 1.65; }
+  .answer p { margin: 0 0 .9em; }
+  .answer blockquote { margin: 0 0 .9em; padding-left: 14px; border-left: 3px solid var(--border); color: var(--muted); }
+  .answer sup a { color: var(--accent); text-decoration: none; font-family: var(--sans); font-size: .75em; font-weight: 600; padding: 0 1px; }
+  .answer sup.pending { color: var(--muted); font-size: .75em; }
+  .status { font-size: .85rem; color: var(--muted); font-style: italic; min-height: 1.3em; }
+  .status::before { content: "● "; animation: pulse 1.2s infinite; color: var(--accent); font-style: normal; }
+  @keyframes pulse { 50% { opacity: .2; } }
+  .notes { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; font-size: .85rem; }
+  .notes ol { margin: 0; padding-left: 22px; }
+  .notes li { margin: 6px 0; }
+  .notes .ref { font-weight: 600; }
+  .notes .exc { color: var(--muted); display: block; margin-top: 2px; }
+  .error { color: var(--error); font-size: .9rem; }
+  .fb { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+  .fb button { padding: 3px 10px; }
+  .fb button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .fb textarea { width: 100%; min-height: 60px; font-size: .9rem; }
+  footer { position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, var(--bg) 24px); padding: 24px 0 14px; }
+  #ask { display: flex; gap: 8px; align-items: flex-end; }
+  #q { flex: 1; resize: none; min-height: 48px; max-height: 200px; }
+  .hint { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Biblioteca Psicanalítica</h1>
+    <div class="who" id="who" hidden>
+      <span id="nome"></span>
+      <button id="nova" type="button">Nova conversa</button>
+      <button id="sair" type="button">Sair</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="gate" hidden>
+    <h2 style="font-family: var(--serif); font-weight: 500">Pesquisa em Freud, Lacan e escolas lacanianas</h2>
+    <p>Teste por convite. Digite o código que você recebeu.</p>
+    <form id="gate-form">
+      <input type="text" id="codigo" placeholder="Código de convite" autocomplete="off" required aria-label="Código de convite">
+      <button class="primary" type="submit">Entrar</button>
+    </form>
+    <p id="gate-erro" role="alert"></p>
+  </section>
+
+  <section id="app" hidden>
+    <div class="notice">
+      <strong>Prova de conceito acadêmica.</strong> As respostas são geradas por IA (Claude) a partir de um acervo de
+      seminários, Escritos, Freud e comentadores, com notas que indicam autor, obra, sessão e página. Confira sempre
+      nas fontes. Perguntas, respostas e avaliações ficam registradas para avaliar a ferramenta.
+      <strong>Não inclua material clínico nem dados que identifiquem pacientes.</strong>
+    </div>
+    <div class="examples" id="examples">
+      <button type="button">Como Lacan define o objeto a no Seminário 10?</button>
+      <button type="button">Como o gozo ganha peso ao longo dos seminários?</button>
+      <button type="button">Qual a diferença entre sintoma e sinthoma?</button>
+      <button type="button">O que Eidelsztein critica na leitura usual do Outro?</button>
+    </div>
+    <div id="log" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer id="footer" hidden>
+  <div class="wrap">
+    <form id="ask">
+      <textarea id="q" rows="1" placeholder="Pergunte sobre um conceito, uma obra, um autor…" aria-label="Pergunta" maxlength="4000"></textarea>
+      <button class="primary" id="enviar" type="submit">Enviar</button>
+    </form>
+    <div class="hint">Enter envia · Shift+Enter quebra a linha</div>
+  </div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+let code = store.get("psilib.convite");
+let conversa = null;
+let busy = false;
+
+marked.setOptions({ breaks: false, gfm: true });
+
+function render(text, citations) {
+  // [§123] → número da nota (no fim) ou marcador provisório (durante o streaming)
+  const byId = citations ? Object.fromEntries(citations.map((c) => [c.chunk_id, c.n])) : null;
+  const withRefs = text.replace(/\[§\s*(\d+)\]/g, (_, id) => {
+    if (!byId) return '<sup class="pending">•</sup>';
+    const n = byId[Number(id)];
+    return n ? `<sup><a href="#n-${turnSeq}-${n}">${n}</a></sup>` : "";
+  });
+  return DOMPurify.sanitize(marked.parse(withRefs));
+}
+
+async function api(path, body) {
+  return fetch(`/chat/api/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Convite": code || "" },
+    body: JSON.stringify(body || {}),
+  });
+}
+
+async function enter(c) {
+  code = c.trim();
+  const r = await api("sessao");
+  if (!r.ok) {
+    $("gate-erro").textContent = r.status === 401 ? "Código inválido." : "Não foi possível entrar agora.";
+    store.del("psilib.convite");
+    showGate();
+    return;
+  }
+  const { nome } = await r.json();
+  store.set("psilib.convite", code);
+  $("nome").textContent = nome;
+  $("gate").hidden = true;
+  $("app").hidden = $("footer").hidden = $("who").hidden = false;
+  $("q").focus();
+}
+
+function showGate() {
+  $("gate").hidden = false;
+  $("app").hidden = $("footer").hidden = $("who").hidden = true;
+}
+
+let turnSeq = 0;
+
+function addMessage(cls) {
+  const div = document.createElement("div");
+  div.className = `msg ${cls}`;
+  $("log").appendChild(div);
+  return div;
+}
+
+function feedbackBox(turno) {
+  const box = document.createElement("div");
+  box.className = "fb";
+  box.innerHTML = `<span>Esta resposta foi útil?</span>
+    <button type="button" data-v="1" aria-label="Útil">👍</button>
+    <button type="button" data-v="-1" aria-label="Não útil">👎</button>
+    <textarea hidden placeholder="O que faltou, o que está impreciso, que fonte deveria aparecer? (opcional)"></textarea>
+    <button type="button" class="send" hidden>Enviar comentário</button>
+    <span class="ok" hidden>Obrigado!</span>`;
+  let valor = null;
+  const ta = box.querySelector("textarea"), send = box.querySelector(".send"), ok = box.querySelector(".ok");
+  const save = async () => {
+    await api("feedback", { turno, valor, comentario: ta.value || null });
+    ok.hidden = false;
+  };
+  box.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", async () => {
+    valor = Number(b.dataset.v);
+    box.querySelectorAll("[data-v]").forEach((x) => x.classList.toggle("on", x === b));
+    ta.hidden = send.hidden = false;
+    await save();
+  }));
+  send.addEventListener("click", save);
+  return box;
+}
+
+async function ask(pergunta) {
+  if (busy || !pergunta.trim()) return;
+  busy = true;
+  $("enviar").disabled = true;
+  $("examples").hidden = true;
+  turnSeq += 1;
+  const seq = turnSeq;
+
+  addMessage("user").innerHTML = `<div class="bubble"></div>`;
+  $("log").lastChild.firstChild.textContent = pergunta;
+  const bot = addMessage("bot");
+  bot.innerHTML = `<div class="status">Consultando a biblioteca…</div><div class="answer"></div>`;
+  const status = bot.querySelector(".status"), answer = bot.querySelector(".answer");
+  bot.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  let text = "", pending = false;
+  const paint = () => { pending = false; answer.innerHTML = render(text, null); };
+
+  try {
+    const r = await api("mensagem", { pergunta, conversa });
+    if (!r.ok) throw new Error(r.status === 422 ? "Pergunta inválida." : `Erro ${r.status}`);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!line.startsWith("data: ")) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.tipo === "conversa") conversa = ev.id;
+        else if (ev.tipo === "status") status.textContent = ev.texto;
+        else if (ev.tipo === "texto") {
+          text += ev.texto;
+          status.textContent = "Escrevendo…";
+          if (!pending) { pending = true; requestAnimationFrame(paint); }
+        } else if (ev.tipo === "erro") {
+          status.remove();
+          const e = document.createElement("div");
+          e.className = "error"; e.textContent = ev.texto;
+          bot.appendChild(e);
+        } else if (ev.tipo === "fim") {
+          status.remove();
+          turnSeq = seq;
+          answer.innerHTML = render(text, ev.citacoes);
+          if (ev.citacoes.length) {
+            const notes = document.createElement("div");
+            notes.className = "notes";
+            const ol = document.createElement("ol");
+            for (const c of ev.citacoes) {
+              const li = document.createElement("li");
+              li.id = `n-${seq}-${c.n}`;
+              li.innerHTML = `<span class="ref"></span><span class="exc"></span>`;
+              li.querySelector(".ref").textContent = c.citacao;
+              li.querySelector(".exc").textContent = c.trecho;
+              ol.appendChild(li);
+            }
+            notes.appendChild(ol);
+            bot.appendChild(notes);
+          }
+          bot.appendChild(feedbackBox(ev.turno));
+        }
+      }
+    }
+  } catch (err) {
+    status.remove();
+    const e = document.createElement("div");
+    e.className = "error"; e.textContent = `Falha de conexão: ${err.message}. Tente de novo.`;
+    bot.appendChild(e);
+  } finally {
+    bot.querySelector(".status")?.remove();
+    busy = false;
+    $("enviar").disabled = false;
+    $("q").focus();
+  }
+}
+
+$("gate-form").addEventListener("submit", (e) => { e.preventDefault(); $("gate-erro").textContent = ""; enter($("codigo").value); });
+$("ask").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q").value; $("q").value = ""; autosize(); ask(q); });
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); } });
+const autosize = () => { $("q").style.height = "auto"; $("q").style.height = Math.min($("q").scrollHeight, 200) + "px"; };
+$("q").addEventListener("input", autosize);
+$("examples").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => ask(b.textContent)));
+$("nova").addEventListener("click", () => { if (busy) return; conversa = null; $("log").innerHTML = ""; $("examples").hidden = false; $("q").focus(); });
+$("sair").addEventListener("click", () => { store.del("psilib.convite"); code = null; conversa = null; $("log").innerHTML = ""; showGate(); });
+
+if (code) enter(code); else showGate();
+</script>
+</body>
+</html>

@@ -19,6 +19,7 @@ dependencies = [
     "mcp>=1.9",
     "sentence-transformers>=3.3",
     "torch>=2.5",
+    "anthropic>=1.0",
 ]
 
 [project.optional-dependencies]
