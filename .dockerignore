@@ -1,8 +1,14 @@
+# Só o necessário para o build entra no contexto (Deck 04: build rápido, imagem enxuta, sem segredos)
+.env
 .venv
+.git
 data
 catalog
 notebooks
-.git
+docs
+scripts
 **/__pycache__
 .pytest_cache
 .ruff_cache
+.coverage
+htmlcov

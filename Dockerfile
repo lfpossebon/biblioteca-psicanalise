@@ -15,6 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         tesseract-ocr-deu ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Usuário sem privilégios para rodar a aplicação. O cache de modelos já nasce com o dono certo:
+# volumes nomeados herdam a permissão do diretório da imagem na primeira montagem.
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin psi \
+    && mkdir -p /cache/huggingface /data \
+    && chown psi:psi /cache/huggingface /data
+
 COPY --from=ghcr.io/astral-sh/uv:0.12.13 /uv /uvx /bin/
 
 WORKDIR /app
@@ -27,13 +33,24 @@ COPY config ./config
 COPY db ./db
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
+USER psi
 EXPOSE 8010
 CMD ["uvicorn", "psilib.api:app", "--host", "0.0.0.0", "--port", "8010"]
 
+# Testes dentro do mesmo ambiente da produção (make test-docker): base + pytest/ruff + tests/
+FROM base AS test
+USER root
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
+COPY tests ./tests
+USER psi
+CMD ["pytest", "-q", "-p", "no:cacheprovider"]
+
 # Jupyter para análises exploratórias (make lab)
 FROM base AS lab
+USER root
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --extra lab
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.root_dir=/app/notebooks"]
+USER psi
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--ServerApp.root_dir=/app/notebooks"]
 
 # Imagem final padrão
 FROM base

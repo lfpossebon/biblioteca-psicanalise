@@ -30,14 +30,42 @@ def word_count(s: str) -> int:
 
 MONTHS = {
     # fr
-    "janvier": 1, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6, "juillet": 7,
-    "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11, "decembre": 12,
+    "janvier": 1,
+    "fevrier": 2,
+    "mars": 3,
+    "avril": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7,
+    "aout": 8,
+    "septembre": 9,
+    "octobre": 10,
+    "novembre": 11,
+    "decembre": 12,
     # pt
-    "janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7,
-    "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
+    "janeiro": 1,
+    "fevereiro": 2,
+    "marco": 3,
+    "abril": 4,
+    "maio": 5,
+    "junho": 6,
+    "julho": 7,
+    "agosto": 8,
+    "setembro": 9,
+    "outubro": 10,
+    "novembro": 11,
+    "dezembro": 12,
     # es
-    "enero": 1, "febrero": 2, "mayo": 5, "junio": 6, "julio": 7,
-    "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+    "enero": 1,
+    "febrero": 2,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "septiembre": 9,
+    "setiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
 }
 _MONTH_RE = "|".join(sorted(MONTHS, key=len, reverse=True))
 
@@ -47,8 +75,10 @@ DATE_RE = re.compile(
 )
 
 
-_WEEKDAYS = (r"(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|segunda|terca|quarta|quinta|sexta"
-             r"|sabado|domingo|lunes|martes|miercoles|jueves|viernes)(?:-feira)?,?\s+")
+_WEEKDAYS = (
+    r"(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|segunda|terca|quarta|quinta|sexta"
+    r"|sabado|domingo|lunes|martes|miercoles|jueves|viernes)(?:-feira)?,?\s+"
+)
 
 
 def fix_digit_typos(s: str) -> str:
@@ -80,7 +110,7 @@ def session_heading_date(line: str, max_len: int = 70) -> date | None:
         m2 = re.match(r"^(?:licao|lecon|clase|sessao|seance|aula)\s+(?:del|du|de)?\s*", s)
         if not m2:
             return None
-        m = DATE_RE.match(s[m2.end():])
+        m = DATE_RE.match(s[m2.end() :])
         if not m:
             return None
     try:

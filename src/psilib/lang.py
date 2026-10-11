@@ -29,4 +29,6 @@ def detect(text: str) -> str | None:
 def detect_many(texts: list[str]) -> list[str | None]:
     samples = [t[:2000] for t in texts]
     langs = _detector().detect_languages_in_parallel_of(samples)
-    return [_CODES.get(lang) if len(s.strip()) >= 40 else None for lang, s in zip(langs, samples)]
+    return [
+        _CODES.get(lang) if len(s.strip()) >= 40 else None for lang, s in zip(langs, samples, strict=True)
+    ]

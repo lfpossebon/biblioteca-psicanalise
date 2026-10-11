@@ -30,6 +30,23 @@ Depois, a qualquer momento: `make pipeline` (só processa o que é novo).
 
 Os arquivos do acervo estão no iCloud. Rode `make hydrate` antes da primeira extração para baixá-los.
 
+A API só fica `healthy` quando o banco responde e o modelo de embeddings está carregado
+(`/ready`; `/health` indica apenas que o processo está de pé).
+
+## Desenvolvimento
+
+```bash
+make check            # lint (ruff) + testes com cobertura — rode antes de cada commit
+make test             # unitários + integração + e2e (estes usam o Postgres do `make up`,
+                      # num banco descartável psilib_test; sem Postgres, são pulados)
+make test-docker      # os mesmos testes dentro da imagem, no ambiente da produção
+make format           # corrige e formata o código
+make up-prod          # sobe só o que está na imagem (sem montar src/)
+```
+
+`docker-compose.override.yml` monta `src/` ao vivo para desenvolvimento e é carregado
+automaticamente; a imagem em si é autocontida. Os containers rodam como usuário sem privilégios (`psi`).
+
 ## Usando com o Claude
 
 Com o MCP registrado, pergunte em português, por exemplo:
@@ -83,8 +100,8 @@ config/        escopo, obras canônicas, léxico de conceitos, fontes monitorada
 catalog/       overrides.csv (curadoria, versionado) · catalogo.csv (gerado)
 db/migrations/ esquema SQL versionado (camadas bronze/silver/gold)
 src/psilib/    pipeline, extratores, busca, API, MCP
-docs/adr/      decisões de arquitetura
-tests/         testes unitários (make test)
+docs/adr/      decisões de arquitetura (0003: por que não Kedro)
+tests/         unitários, integração (Postgres) e e2e da API (make test)
 ```
 
 ## Uso e direitos

@@ -34,7 +34,9 @@ def compiled() -> list[CompiledConcept]:
         by_lang = {}
         for lang in LANGS + (None,):
             ts = common + (
-                _terms(terms.get(lang, [])) if lang else [t for lng in LANGS for t in _terms(terms.get(lng, []))]
+                _terms(terms.get(lang, []))
+                if lang
+                else [t for lng in LANGS for t in _terms(terms.get(lng, []))]
             )
             ci = [p for p, cs in ts if not cs]
             cs = [p for p, cs in ts if cs]
@@ -92,7 +94,9 @@ def sync_lexicon(conn) -> dict[str, int]:
                     " on conflict do nothing",
                     (ids[c["slug"]], lang, p, cs),
                 )
-    removed = conn.execute("delete from concept where slug <> all(%s) returning slug", (list(ids),)).fetchall()
+    removed = conn.execute(
+        "delete from concept where slug <> all(%s) returning slug", (list(ids),)
+    ).fetchall()
     if removed:
         log.info("conceitos removidos do léxico: %s", [r["slug"] for r in removed])
     return ids

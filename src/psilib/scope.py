@@ -76,9 +76,7 @@ def content_signal(text: str) -> tuple[str, dict[str, int]]:
 
 @lru_cache
 def _seminars():
-    return [
-        (s["n"], re.compile(s["cues"]), s) for s in load_yaml("works.yaml")["lacan_seminars"]
-    ]
+    return [(s["n"], re.compile(s["cues"]), s) for s in load_yaml("works.yaml")["lacan_seminars"]]
 
 
 def seminar_ref(n: str) -> WorkRef:
@@ -113,7 +111,9 @@ def detect_lacan_seminar(relpath: str) -> WorkRef | None:
 def lacan_text_ref(slug: str) -> WorkRef:
     for t in load_yaml("works.yaml")["lacan_texts"]:
         if t["slug"] == slug:
-            return WorkRef(f"lacan-{slug.replace('_', '-')}", t["title"], "escrito", None, t["year"], t["year"])
+            return WorkRef(
+                f"lacan-{slug.replace('_', '-')}", t["title"], "escrito", None, t["year"], t["year"]
+            )
     raise KeyError(slug)
 
 

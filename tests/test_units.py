@@ -41,16 +41,38 @@ def test_parse_date_inside_text():
 @pytest.mark.parametrize(
     "path, line, author",
     [
-        ("livros/Seminarios Lacan/11-LACAN-Jacques.-O-seminário-livro-11.-Os-quatro-conceitos.pdf", "lacan", "Jacques Lacan"),
-        ("Camila Kushner/pdfcoffee.com_alfredo-eidelsztein-el-seminario-20-de-jacques-lacan-4-pdf-free.pdf",
-         "escola_argentina", "Alfredo Eidelsztein"),
-        ("Camila Kushner/El establecimiento del seminario de Jacques Lacan - Jacques-Alain Miller.pdf",
-         "lacaniano", "Jacques-Alain Miller"),
+        (
+            "livros/Seminarios Lacan/11-LACAN-Jacques.-O-seminário-livro-11.-Os-quatro-conceitos.pdf",
+            "lacan",
+            "Jacques Lacan",
+        ),
+        (
+            "Camila Kushner/pdfcoffee.com_alfredo-eidelsztein-el-seminario-20-de-jacques-lacan-4-pdf-free.pdf",
+            "escola_argentina",
+            "Alfredo Eidelsztein",
+        ),
+        (
+            "Camila Kushner/El establecimiento del seminario de Jacques Lacan - Jacques-Alain Miller.pdf",
+            "lacaniano",
+            "Jacques-Alain Miller",
+        ),
         ("livros/Introducao a leitura de Lacan - Joel Dor.pdf", "lacaniano", "Joël Dor"),
-        ("livros/KLEIN, Melanie - Inveja E Gratidão e Outros Trabalhos - 1946-1963.pdf", "kleiniano", "Melanie Klein"),
+        (
+            "livros/KLEIN, Melanie - Inveja E Gratidão e Outros Trabalhos - 1946-1963.pdf",
+            "kleiniano",
+            "Melanie Klein",
+        ),
         ("livros/WINNICOTT D W - Privação e Delinquência.pdf", "winnicottiano", "D. W. Winnicott"),
-        ("livros/Freud Obras Completas/freud-sigmund-obras-completas-imago-vol-17-1917-1918.pdf", "freud", "Sigmund Freud"),
-        ("CEP/CICLO 01/AULA 04/Ciclo-I-Comp.-Aula-04-FREUD-S.-Vol.-VI-Atos-falhos-combinados.pdf", "freud", "Sigmund Freud"),
+        (
+            "livros/Freud Obras Completas/freud-sigmund-obras-completas-imago-vol-17-1917-1918.pdf",
+            "freud",
+            "Sigmund Freud",
+        ),
+        (
+            "CEP/CICLO 01/AULA 04/Ciclo-I-Comp.-Aula-04-FREUD-S.-Vol.-VI-Atos-falhos-combinados.pdf",
+            "freud",
+            "Sigmund Freud",
+        ),
         ("livros/julho CONTRATO DE LOCAÇÃO RESIDENCIAL FERNÃO DIAS.docx", "fora_do_tema", "Fora do tema"),
         ("livros/Introdução a Jacques Lacan.pdf", "lacaniano", "Comentador lacaniano (não identificado)"),
     ],
@@ -68,8 +90,14 @@ def test_out_of_scope_lines():
 @pytest.mark.parametrize(
     "path, n",
     [
-        ("livros/Seminarios Lacan/05-LACAN-Jacques.-O-seminário.-O-desejo-e-sua-interpretação-1958-59.pdf", "6"),
-        ("livros/Seminarios Lacan/25-LACAN-Jacques.-O-seminário-livro-26.-El-momento-de-concluir-1977-78.pdf", "25"),
+        (
+            "livros/Seminarios Lacan/05-LACAN-Jacques.-O-seminário.-O-desejo-e-sua-interpretação-1958-59.pdf",
+            "6",
+        ),
+        (
+            "livros/Seminarios Lacan/25-LACAN-Jacques.-O-seminário-livro-26.-El-momento-de-concluir-1977-78.pdf",
+            "25",
+        ),
         ("livros/Seminarios Lacan/19-LACAN-Jacques.-O-seminário.-O-saber-do-psicanalista-1971-72.pdf", "19b"),
         ("livros/Seminarios Lacan/Seminário 24 - Jacques Lacan.pdf", "24"),
         ("Camila Kushner/Lacan - Seminário 21 - Os nomes do pai (os não tolos erram).pdf", "21"),
@@ -171,8 +199,12 @@ def test_staferla_sessions(tmp_path):
 
 @pytest.mark.parametrize(
     "filename, slug",
-    [("L'etourdit.docx", "letourdit"), ("La_Troisieme.docx", "la_troisieme"),
-     ("L'instance de la lettre.docx", "linstance_de_la_lettre"), ("Trois prefaces.docx", "trois_prefaces")],
+    [
+        ("L'etourdit.docx", "letourdit"),
+        ("La_Troisieme.docx", "la_troisieme"),
+        ("L'instance de la lettre.docx", "linstance_de_la_lettre"),
+        ("Trois prefaces.docx", "trois_prefaces"),
+    ],
 )
 def test_staferla_text_slug(filename, slug):
     from psilib.scope import lacan_text_ref
@@ -185,9 +217,11 @@ def test_staferla_text_slug(filename, slug):
 def test_fix_session_years():
     from psilib.pipeline import fix_session_years
 
-    segs = [{"session_date": date(1965, 6, 16), "section_label": "Sessão de 16/06/1965"},
-            {"session_date": date(1966, 6, 23), "section_label": "Sessão de 23/06/1966"},
-            {"session_date": date(1973, 1, 1), "section_label": "Postface (1er janvier 1973)"}]
+    segs = [
+        {"session_date": date(1965, 6, 16), "section_label": "Sessão de 16/06/1965"},
+        {"session_date": date(1966, 6, 23), "section_label": "Sessão de 23/06/1966"},
+        {"session_date": date(1973, 1, 1), "section_label": "Postface (1er janvier 1973)"},
+    ]
     assert fix_session_years(segs, 1964, 1965) == ["1966-06-23 → 1965-06-23"]
     assert segs[1]["session_date"] == date(1965, 6, 23)
     assert segs[2]["session_date"] == date(1973, 1, 1)  # posfácio fica com a própria data

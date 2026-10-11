@@ -25,15 +25,15 @@ class ChunkDraft:
 
 def _unwrap(text: str) -> str:
     """Junta quebras de linha internas a parágrafos (PDF quebra por linha)."""
-    text = re.sub(r"\n\s*\n", " ", text)              # parágrafos reais
+    text = re.sub(r"\n\s*\n", " ", text)  # parágrafos reais
     text = re.sub(r"(?<![.!?»:;])\n(?=[a-zà-ÿ0-9,(])", " ", text)  # quebra no meio da frase
     return text.replace(" ", "\n\n")
 
 
 def _sentences(text: str, max_words: int) -> list[str]:
     out = []
-    for para in re.split(r"\n+", _unwrap(text)):
-        para = para.strip()
+    for raw_para in re.split(r"\n+", _unwrap(text)):
+        para = raw_para.strip()
         if not para:
             continue
         for sent in _SENT_SPLIT.split(para):
@@ -58,7 +58,9 @@ def chunk_segments(segments: list[dict], target_words: int = 350) -> list[ChunkD
         text = " ".join(s.strip() if not s.endswith("\n") else s for s in buf).strip()
         text = re.sub(r" *\n *", "\n", text)
         if text:
-            chunks.append(ChunkDraft(text, word_count(text), p0, p1, key[0] if key else None, key[1] if key else None))
+            chunks.append(
+                ChunkDraft(text, word_count(text), p0, p1, key[0] if key else None, key[1] if key else None)
+            )
         buf, n, p0, p1 = [], 0, None, None
 
     for seg in segments:

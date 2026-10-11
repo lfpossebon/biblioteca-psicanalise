@@ -31,9 +31,9 @@ def _guess_language(relpath: str) -> str | None:
     name = relpath.lower()
     if re.search(r"\b(frances|français|francais)\b", name):
         return "fr"
-    if re.search(r"\b(el|la|los|las|del|psicoanalisis|psicoanalítica|clinica psicoanalitica)\b", name) and not re.search(
-        r"\b(o|os|da|do|das|dos)\b", name
-    ):
+    if re.search(
+        r"\b(el|la|los|las|del|psicoanalisis|psicoanalítica|clinica psicoanalitica)\b", name
+    ) and not re.search(r"\b(o|os|da|do|das|dos)\b", name):
         return "es"
     return None  # detectado pelo texto na extração
 
@@ -43,7 +43,9 @@ def scan() -> list[DocSpec]:
     overrides = load_overrides()
     specs: list[DocSpec] = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if not is_ignored(os.path.relpath(os.path.join(dirpath, d), root) + "/"))
+        dirnames[:] = sorted(
+            d for d in dirnames if not is_ignored(os.path.relpath(os.path.join(dirpath, d), root) + "/")
+        )
         for fn in sorted(filenames):
             full = Path(dirpath) / fn
             rel = os.path.relpath(full, root)

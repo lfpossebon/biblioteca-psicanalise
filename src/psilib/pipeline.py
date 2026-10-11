@@ -70,7 +70,9 @@ def fetch_staferla(include_freud: bool = False, source: str = "auto") -> dict:
         with connect() as conn:
             for spec, changed in results:
                 upsert_document(conn, spec, changed=changed)
-                stats["changed" if changed else "unchanged"] = stats.get("changed" if changed else "unchanged", 0) + 1
+                stats["changed" if changed else "unchanged"] = (
+                    stats.get("changed" if changed else "unchanged", 0) + 1
+                )
             conn.commit()
             export_catalog(conn)
     return stats
@@ -78,7 +80,11 @@ def fetch_staferla(include_freud: bool = False, source: str = "auto") -> dict:
 
 # ------------------------------------------------------------------ sondagem de conteúdo
 
-_FREUD_MARKERS = ("edicao standard brasileira", "obras psicologicas completas de sigmund freud", "standard edition")
+_FREUD_MARKERS = (
+    "edicao standard brasileira",
+    "obras psicologicas completas de sigmund freud",
+    "standard edition",
+)
 
 
 def probe(limit: int | None = None) -> dict:
@@ -160,8 +166,11 @@ def _extract_one(conn, d: dict) -> str:
     else:
         raise ValueError(f"formato não suportado: {d['file_type']}")
 
-    language = d["language"] or lang.detect("\n".join(s.text for s in ex.segments[5:40])[:5000]) \
+    language = (
+        d["language"]
+        or lang.detect("\n".join(s.text for s in ex.segments[5:40])[:5000])
         or lang.detect("\n".join(s.text for s in ex.segments)[:5000])
+    )
     conn.execute("delete from segment where document_id=%s", (d["id"],))
     with conn.cursor().copy(
         "copy segment (document_id, ordinal, page_no, section_label, session_date, text) from stdin"
@@ -190,7 +199,9 @@ def extract(limit: int | None = None, source: str | None = None, retry_failed: b
                 result = _extract_one(conn, d)
             except Exception as e:
                 conn.rollback()
-                conn.execute("update document set status='failed', error=%s where id=%s", (repr(e)[:500], d["id"]))
+                conn.execute(
+                    "update document set status='failed', error=%s where id=%s", (repr(e)[:500], d["id"])
+                )
                 result = "failed"
                 log.warning("falha ao extrair %s: %s", d["uri"], e)
             conn.commit()
@@ -274,11 +285,17 @@ def chunk(limit: int | None = None) -> dict:
             ).fetchall()
             # Só seminários: escritos/entrevistas podem legitimamente ter datas fora do "ano da obra"
             # (Télévision: gravado em 1973, transmitido em 1974).
-            fixes = fix_session_years(segs, d["year_start"], d["year_end"]) if d["work_type"] == "seminario" else []
+            fixes = (
+                fix_session_years(segs, d["year_start"], d["year_end"])
+                if d["work_type"] == "seminario"
+                else []
+            )
             if fixes:
                 log.warning("datas de sessão corrigidas em %s: %s", d["uri"][-60:], fixes)
-                conn.execute("update document set meta = meta || %s where id=%s",
-                             (json.dumps({"session_date_fixes": fixes}), d["id"]))
+                conn.execute(
+                    "update document set meta = meta || %s where id=%s",
+                    (json.dumps({"session_date_fixes": fixes}), d["id"]),
+                )
                 stats["session_date_fixes"] = stats.get("session_date_fixes", 0) + len(fixes)
             drafts = chunk_segments(segs, target)
             langs = lang.detect_many([c.text for c in drafts]) if drafts else []
@@ -287,10 +304,23 @@ def chunk(limit: int | None = None) -> dict:
                 """copy chunk (document_id, ordinal, text, n_words, page_start, page_end, section_label,
                                session_date, period_date, period_precision, language) from stdin"""
             ) as cp:
-                for i, (c, lg) in enumerate(zip(drafts, langs)):
+                for i, (c, lg) in enumerate(zip(drafts, langs, strict=True)):
                     pdate, prec = _period(c.session_date, d)
-                    cp.write_row((d["id"], i, c.text, c.n_words, c.page_start, c.page_end, c.section_label,
-                                  c.session_date, pdate, prec, lg or d["language"]))
+                    cp.write_row(
+                        (
+                            d["id"],
+                            i,
+                            c.text,
+                            c.n_words,
+                            c.page_start,
+                            c.page_end,
+                            c.section_label,
+                            c.session_date,
+                            pdate,
+                            prec,
+                            lg or d["language"],
+                        )
+                    )
             conn.execute("update document set status='chunked', updated_at=now() where id=%s", (d["id"],))
             conn.commit()
             stats["documents"] = stats.get("documents", 0) + 1
@@ -302,38 +332,29 @@ def chunk(limit: int | None = None) -> dict:
 
 
 def concepts(full: bool = True) -> dict:
-    """Recalcula as menções de todos os conceitos (rápido o bastante para refazer do zero)."""
+    """Recalcula as menções de todos os conceitos (rápido o bastante para refazer do zero).
+
+    Atômico: as menções são calculadas primeiro e trocadas numa única transação. Se a etapa
+    falhar no meio, a camada gold continua com a versão anterior em vez de ficar vazia; e a API
+    segue lendo as menções antigas até o commit (delete, ao contrário de truncate, não bloqueia leituras).
+    """
     with run_step("concepts") as stats, connect() as conn:
         ids = sync_lexicon(conn)
-        conn.execute("truncate concept_mention")
-        conn.commit()
-        total = 0
+        mentions = []
         with conn.cursor(name="chunks") as cur:
             cur.itersize = 2000
             cur.execute("select id, text, language from chunk")
-            batch = []
             for row in cur:
                 for slug, n in count_mentions(row["text"], row["language"]).items():
-                    batch.append((ids[slug], row["id"], n))
-                if len(batch) > 20000:
-                    total += _copy_mentions(batch)
-                    batch = []
-            total += _copy_mentions(batch)
+                    mentions.append((ids[slug], row["id"], n))
+        conn.execute("delete from concept_mention")
+        with conn.cursor().copy("copy concept_mention (concept_id, chunk_id, n) from stdin") as cp:
+            for r in mentions:
+                cp.write_row(r)
         conn.commit()
-        stats["mentions_rows"] = total
+        stats["mentions_rows"] = len(mentions)
         stats["concepts"] = len(ids)
     return stats
-
-
-def _copy_mentions(rows: list[tuple]) -> int:
-    if not rows:
-        return 0
-    with connect() as c2:
-        with c2.cursor().copy("copy concept_mention (concept_id, chunk_id, n) from stdin") as cp:
-            for r in rows:
-                cp.write_row(r)
-        c2.commit()
-    return len(rows)
 
 
 def embed(limit: int | None = None, batch_size: int = 256) -> dict:
@@ -359,7 +380,7 @@ def embed(limit: int | None = None, batch_size: int = 256) -> dict:
             # Um cabeçalho curto com autor/obra ajuda a busca a distinguir Lacan de comentadores.
             vecs = embeddings.embed([f"{r['author']} — {r['work']}\n{r['text']}" for r in rows])
             with conn.cursor().copy("copy chunk_embedding (chunk_id, model, embedding) from stdin") as cp:
-                for r, v in zip(rows, vecs):
+                for r, v in zip(rows, vecs, strict=True):
                     cp.write_row((r["id"], model, "[" + ",".join(f"{x:.6f}" for x in v) + "]"))
             conn.commit()
             done += len(rows)

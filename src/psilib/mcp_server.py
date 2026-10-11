@@ -45,15 +45,29 @@ def _threaded(fn):
 
 
 def _f(linhas, autor, obra, lingua, ano_de, ano_ate, fonte=None) -> Filters:
-    return Filters(lines=linhas, author=autor, work=obra, language=lingua, year_from=ano_de, year_to=ano_ate,
-                   source=fonte)
+    return Filters(
+        lines=linhas,
+        author=autor,
+        work=obra,
+        language=lingua,
+        year_from=ano_de,
+        year_to=ano_ate,
+        source=fonte,
+    )
 
 
 @mcp.tool()
 @_threaded
-def buscar(consulta: str, k: int = 8, linhas: list[str] | None = None, autor: str | None = None,
-           obra: str | None = None, lingua: str | None = None, ano_de: int | None = None,
-           ano_ate: int | None = None) -> dict:
+def buscar(
+    consulta: str,
+    k: int = 8,
+    linhas: list[str] | None = None,
+    autor: str | None = None,
+    obra: str | None = None,
+    lingua: str | None = None,
+    ano_de: int | None = None,
+    ano_ate: int | None = None,
+) -> dict:
     """Busca trechos da biblioteca (texto + semântica entre línguas + conceitos), com citação completa.
 
     linhas: freud, lacan, lacaniano, escola_argentina, comentador_freudiano, referencia.
@@ -79,9 +93,16 @@ def listar_conceitos() -> list[dict]:
 
 @mcp.tool()
 @_threaded
-def linha_do_tempo(conceito: str, granularidade: str = "obra", linhas: list[str] | None = None,
-                   autor: str | None = None, obra: str | None = None, lingua: str | None = None,
-                   ano_de: int | None = None, ano_ate: int | None = None) -> dict:
+def linha_do_tempo(
+    conceito: str,
+    granularidade: str = "obra",
+    linhas: list[str] | None = None,
+    autor: str | None = None,
+    obra: str | None = None,
+    lingua: str | None = None,
+    ano_de: int | None = None,
+    ano_ate: int | None = None,
+) -> dict:
     """Evolução de um conceito: ocorrências por 10 mil palavras por 'sessao', 'ano' ou 'obra'.
 
     Ex.: linha_do_tempo("gozo", "sessao", linhas=["lacan"]) mostra o peso do gozo sessão a sessão
@@ -99,7 +120,9 @@ def conceitos_relacionados(conceito: str, limite: int = 15) -> dict:
 
 @mcp.tool()
 @_threaded
-def listar_obras(linhas: list[str] | None = None, autor: str | None = None, lingua: str | None = None) -> list[dict]:
+def listar_obras(
+    linhas: list[str] | None = None, autor: str | None = None, lingua: str | None = None
+) -> list[dict]:
     """Obras indexadas com período, língua, fonte e tamanho."""
     return service.list_works(_f(linhas, autor, None, lingua, None, None))
 

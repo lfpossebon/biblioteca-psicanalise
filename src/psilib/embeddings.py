@@ -6,13 +6,15 @@ testar outro modelo lado a lado sem migrar nada.
 
 import logging
 import re
-from functools import lru_cache
+import threading
 
 import httpx
 
 from psilib.config import settings
 
 log = logging.getLogger(__name__)
+_model = None
+_model_lock = threading.Lock()
 
 
 def _prefixes(model: str) -> tuple[str, str]:
@@ -35,15 +37,45 @@ def _device() -> str:
     return "cpu"
 
 
-@lru_cache
-def _local_model(name: str):
-    from sentence_transformers import SentenceTransformer
+def _local_model():
+    """Modelo carregado uma vez por processo. Double-checked locking (Deck 03 da disciplina):
+    REST e MCP atendem em várias threads e, sem o lock, duas buscas simultâneas logo após o
+    start carregariam o modelo (~2 GB) duas vezes."""
+    global _model  # noqa: PLW0603 — singleton por processo, protegido pelo lock
+    if _model is None:
+        with _model_lock:
+            if _model is None:
+                from sentence_transformers import SentenceTransformer
 
-    device = _device()
-    log.info("carregando modelo de embeddings %s em %s (primeira vez baixa ~2 GB)", name, device)
-    model = SentenceTransformer(name, device=device)
-    model.max_seq_length = min(model.max_seq_length or 1024, 1024)  # chunks têm ~500 tokens; limita a RAM
-    return model
+                s, device = settings(), _device()
+                log.info(
+                    "carregando modelo de embeddings %s@%s em %s",
+                    s.embedding_model,
+                    (s.embedding_revision or "main")[:7],
+                    device,
+                )
+                model = SentenceTransformer(
+                    s.embedding_model, revision=s.embedding_revision or None, device=device
+                )
+                model.max_seq_length = min(model.max_seq_length or 1024, 1024)  # chunks têm ~500 tokens
+                _model = model
+    return _model
+
+
+def is_ready() -> bool:
+    """Pronto para busca semântica: modelo local carregado (ou provedor remoto, que não carrega nada)."""
+    return settings().embedding_provider != "local" or _model is not None
+
+
+def warmup() -> None:
+    """Carrega o modelo antes da primeira busca (chamado em thread daemon no startup da API)."""
+    if settings().embedding_provider != "local":
+        return
+    try:
+        _local_model()
+        log.info("modelo de embeddings pronto")
+    except Exception:
+        log.exception("falha ao carregar o modelo de embeddings; a busca segue só com texto")
 
 
 def _voyage(texts: list[str], input_type: str) -> list[list[float]]:
@@ -64,7 +96,7 @@ def embed(texts: list[str], kind: str = "passage") -> list[list[float]]:
         return _voyage(texts, "query" if kind == "query" else "document")
     q, p = _prefixes(s.embedding_model)
     prefixed = [(q if kind == "query" else p) + t for t in texts]
-    vecs = _local_model(s.embedding_model).encode(
+    vecs = _local_model().encode(
         prefixed, batch_size=s.embedding_batch, normalize_embeddings=True, show_progress_bar=False
     )
     return vecs.tolist()

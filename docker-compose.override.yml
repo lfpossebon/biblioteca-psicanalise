@@ -1,0 +1,13 @@
+# Desenvolvimento ("inner loop"): carregado automaticamente por `docker compose`.
+# Monta o código ao vivo — mudanças em src/ valem no próximo `pipeline` sem rebuild
+# (a API precisa de `docker compose restart app`).
+#
+# Para rodar exatamente o que está na imagem (como em produção), ignore este arquivo:
+#   docker compose -f docker-compose.yml up -d
+services:
+  app:
+    volumes:
+      - ./src:/app/src:ro
+  pipeline:
+    volumes:
+      - ./src:/app/src:ro

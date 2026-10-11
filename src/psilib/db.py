@@ -2,6 +2,7 @@
 
 import json
 import logging
+import threading
 from contextlib import contextmanager
 
 from pgvector.psycopg import register_vector
@@ -13,6 +14,7 @@ from psilib.config import settings
 
 log = logging.getLogger(__name__)
 _pool: ConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def _configure(conn: Connection) -> None:
@@ -23,16 +25,20 @@ def _configure(conn: Connection) -> None:
 
 
 def pool() -> ConnectionPool:
-    global _pool
+    """Pool único por processo. Double-checked locking: a API atende requisições em várias
+    threads, e sem o lock duas requisições simultâneas no início criariam dois pools."""
+    global _pool  # noqa: PLW0603 — singleton por processo, protegido pelo lock
     if _pool is None:
-        _pool = ConnectionPool(
-            settings().database_url,
-            min_size=1,
-            max_size=8,
-            kwargs={"row_factory": dict_row, "autocommit": False},
-            configure=_configure,
-            open=True,
-        )
+        with _pool_lock:
+            if _pool is None:
+                _pool = ConnectionPool(
+                    settings().database_url,
+                    min_size=1,
+                    max_size=8,
+                    kwargs={"row_factory": dict_row, "autocommit": False},
+                    configure=_configure,
+                    open=True,
+                )
     return _pool
 
 

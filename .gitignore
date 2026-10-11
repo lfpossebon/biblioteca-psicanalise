@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
+.coverage
+htmlcov/
 data/
 catalog/catalogo.csv
 notebooks/.ipynb_checkpoints/

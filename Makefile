@@ -2,7 +2,7 @@
 DC  := docker compose
 RUN := $(DC) run --rm pipeline
 
-.PHONY: help up down build logs psql test migrate inventory staferla staferla-freud probe extract ocr chunk \
+.PHONY: help up up-prod down build logs psql test test-docker lint format check migrate inventory staferla staferla-freud probe extract ocr chunk \
         concepts embed embed-host refresh pipeline stats watch watch-list lab hydrate mcp-add
 
 help:  ## Lista os comandos
@@ -14,6 +14,9 @@ build:  ## Constrói a imagem
 up:  ## Sobe Postgres + API/MCP (http://localhost:8010/docs, MCP em /mcp)
 	$(DC) up -d db app
 
+up-prod:  ## Idem, só com o que está na imagem (ignora docker-compose.override.yml)
+	$(DC) -f docker-compose.yml up -d db app
+
 down:  ## Para os serviços (dados ficam no volume pgdata)
 	$(DC) down
 
@@ -23,8 +26,22 @@ logs:  ## Logs da API/MCP
 psql:  ## Console SQL
 	$(DC) exec db psql -U psi -d psilib
 
-test:  ## Testes unitários (sem banco)
-	PYTHONPATH=src uv run pytest -q
+# ---------------------------------------------------------------- qualidade
+test:  ## Testes no Mac com cobertura (integração/e2e usam o Postgres do `make up`, banco psilib_test)
+	uv run --frozen pytest -q --cov --cov-report=term-missing:skip-covered
+
+test-docker:  ## Testes dentro da imagem (mesmo ambiente da produção)
+	$(DC) --profile test run --rm --build test
+
+lint:  ## Ruff: lint + checagem de formatação
+	uv run --frozen ruff check src tests scripts
+	uv run --frozen ruff format --check src tests scripts
+
+format:  ## Ruff: corrige o que for automático e formata
+	uv run --frozen ruff check --fix src tests scripts
+	uv run --frozen ruff format src tests scripts
+
+check: lint test  ## Tudo o que deve passar antes de um commit
 
 # ---------------------------------------------------------------- pipeline (incremental)
 migrate:  ## Cria/atualiza o esquema

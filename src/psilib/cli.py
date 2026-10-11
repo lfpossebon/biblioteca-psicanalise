@@ -7,7 +7,8 @@ from datetime import date
 import typer
 
 from psilib import pipeline
-from psilib.db import connect, migrate as run_migrations
+from psilib.db import connect
+from psilib.db import migrate as run_migrations
 
 app = typer.Typer(help="Biblioteca psicanalítica — pipeline de dados e consultas", no_args_is_help=True)
 watch_app = typer.Typer(help="Monitor de publicações novas (OpenAlex)")
@@ -42,8 +43,10 @@ def inventory():
 
 
 @app.command()
-def staferla(freud: bool = typer.Option(False, help="Inclui Freud (SE inglês + GW alemão)"),
-             fonte: str = typer.Option("auto", help="auto | site | arquivo (Internet Archive)")):
+def staferla(
+    freud: bool = typer.Option(False, help="Inclui Freud (SE inglês + GW alemão)"),
+    fonte: str = typer.Option("auto", help="auto | site | arquivo (Internet Archive)"),
+):
     """Baixa/atualiza seminários e textos de Lacan do Staferla (só o que mudou).
 
     Com o site fora do ar, 'auto' usa as cópias do Internet Archive; quando o site voltar,
@@ -95,7 +98,10 @@ def refresh():
 
 
 @app.command()
-def run(staferla_: bool = typer.Option(True, "--staferla/--no-staferla"), embed_: bool = typer.Option(True, "--embed/--no-embed")):
+def run(
+    staferla_: bool = typer.Option(True, "--staferla/--no-staferla"),
+    embed_: bool = typer.Option(True, "--embed/--no-embed"),
+):
     """Pipeline completo, incremental: migrate → inventory → staferla → extract → chunk → concepts → embed → refresh."""
     out = {"migrate": run_migrations(), "inventory": pipeline.inventory()}
     if staferla_:
@@ -115,18 +121,22 @@ def run(staferla_: bool = typer.Option(True, "--staferla/--no-staferla"), embed_
 @app.command()
 def search(query: str, k: int = 5, linha: list[str] = typer.Option(None), modo: str = "hybrid"):
     """Busca de teste no terminal."""
-    from psilib.service import Filters, search as do_search
+    from psilib.service import Filters
+    from psilib.service import search as do_search
 
     res = do_search(query, k, Filters(lines=linha or None), mode=modo, max_chars=400)
     for r in res["resultados"]:
         typer.echo(f"\n[{r['chunk_id']}] {r['citacao']}  (score {r['score']})\n{r['texto']}")
-    typer.echo(f"\nconceitos reconhecidos: {res['conceitos_reconhecidos']} | estratégias: {res['estrategias']}")
+    typer.echo(
+        f"\nconceitos reconhecidos: {res['conceitos_reconhecidos']} | estratégias: {res['estrategias']}"
+    )
 
 
 @app.command()
 def timeline(concept: str, granularidade: str = "obra", linha: list[str] = typer.Option(None)):
     """Linha do tempo de um conceito no terminal."""
-    from psilib.service import Filters, timeline as do_timeline
+    from psilib.service import Filters
+    from psilib.service import timeline as do_timeline
 
     _print(do_timeline(concept, granularidade, Filters(lines=linha or None)))
 
@@ -178,8 +188,10 @@ def watch_list(decision: str = "pending", limit: int = 30, lingua: str = typer.O
             (decision, lingua, lingua, limit),
         ).fetchall()
     for r in rows:
-        typer.echo(f"{r['id']:>6}  {r['year']}  {r['language'] or '--'}  {'PDF' if r['pdf_aberto'] else '   '}  "
-                   f"{(r['title'] or '')[:90]}  — {(r['authors'] or '')[:50]}")
+        typer.echo(
+            f"{r['id']:>6}  {r['year']}  {r['language'] or '--'}  {'PDF' if r['pdf_aberto'] else '   '}  "
+            f"{(r['title'] or '')[:90]}  — {(r['authors'] or '')[:50]}"
+        )
 
 
 @watch_app.command("accept")
@@ -199,19 +211,35 @@ def watch_accept(ids: list[int], linha: str = "lacaniano"):
                 typer.echo(f"{item_id}: sem PDF de acesso aberto — mantido como pendente")
                 continue
             path = out / f"{it['external_id']}.pdf"
-            r = httpx.get(it["oa_pdf_url"], follow_redirects=True, timeout=120,
-                          headers={"User-Agent": settings().http_user_agent})
+            r = httpx.get(
+                it["oa_pdf_url"],
+                follow_redirects=True,
+                timeout=120,
+                headers={"User-Agent": settings().http_user_agent},
+            )
             if r.status_code != 200 or not r.content.startswith(b"%PDF"):
                 typer.echo(f"{item_id}: download falhou ({r.status_code})")
                 continue
             path.write_bytes(r.content)
             first_author = (it["authors"] or "").split(";")[0].strip() or None
-            upsert_document(conn, DocSpec(
-                source_id="openalex", uri=it["url"], title=it["title"] or it["external_id"], local_path=str(path),
-                author=first_author, line=linha, in_scope=True, scope_reason="aceito do monitor OpenAlex",
-                language=it["language"], year_publication=it["year"], file_type="pdf", bytes=len(r.content),
-                meta={"openalex_id": it["external_id"]},
-            ))
+            upsert_document(
+                conn,
+                DocSpec(
+                    source_id="openalex",
+                    uri=it["url"],
+                    title=it["title"] or it["external_id"],
+                    local_path=str(path),
+                    author=first_author,
+                    line=linha,
+                    in_scope=True,
+                    scope_reason="aceito do monitor OpenAlex",
+                    language=it["language"],
+                    year_publication=it["year"],
+                    file_type="pdf",
+                    bytes=len(r.content),
+                    meta={"openalex_id": it["external_id"]},
+                ),
+            )
             conn.execute("update watch_item set decision='accepted' where id=%s", (item_id,))
             conn.commit()
             typer.echo(f"{item_id}: aceito → {path.name}")

@@ -17,13 +17,13 @@ RRF_K = 60
 
 @dataclass
 class Filters:
-    lines: list[str] | None = None        # ex.: ["lacan"] ou ["escola_argentina", "lacaniano"]
-    author: str | None = None             # substring, sem acento/maiúsculas
-    work: str | None = None               # slug ou substring do título (ex.: "seminario-11")
+    lines: list[str] | None = None  # ex.: ["lacan"] ou ["escola_argentina", "lacaniano"]
+    author: str | None = None  # substring, sem acento/maiúsculas
+    work: str | None = None  # slug ou substring do título (ex.: "seminario-11")
     language: str | None = None
     year_from: int | None = None
     year_to: int | None = None
-    source: str | None = None             # local | staferla | openalex
+    source: str | None = None  # local | staferla | openalex
 
     def sql(self, alias: str = "v") -> tuple[str, dict]:
         conds, p = [], {}
@@ -31,7 +31,9 @@ class Filters:
             conds.append(f"{alias}.line = any(%(f_lines)s)")
             p["f_lines"] = self.lines
         if self.author:
-            conds.append(f"f_unaccent(lower({alias}.author)) like '%%' || f_unaccent(lower(%(f_author)s)) || '%%'")
+            conds.append(
+                f"f_unaccent(lower({alias}.author)) like '%%' || f_unaccent(lower(%(f_author)s)) || '%%'"
+            )
             p["f_author"] = self.author
         if self.work:
             conds.append(
@@ -55,6 +57,16 @@ class Filters:
         return (" and ".join(conds) or "true"), p
 
 
+def db_ok() -> bool:
+    try:
+        with connect() as conn:
+            conn.execute("select 1")
+        return True
+    except Exception as e:
+        log.warning("banco indisponível: %s", e)
+        return False
+
+
 def citation(r: dict) -> str:
     parts = [r.get("author") or "?"]
     parts.append(r.get("work_title") or r.get("doc_title"))
@@ -63,7 +75,9 @@ def citation(r: dict) -> str:
     elif r.get("period_date"):
         parts.append(str(r["period_date"].year))
     if r.get("page_start"):
-        pages = r["page_start"] if r["page_start"] == r.get("page_end") else f"{r['page_start']}-{r['page_end']}"
+        pages = (
+            r["page_start"] if r["page_start"] == r.get("page_end") else f"{r['page_start']}-{r['page_end']}"
+        )
         parts.append(f"p. {pages}")
     parts.append(f"[{r.get('language') or '?'}, {r.get('source_id')}]")
     return ", ".join(str(p) for p in parts if p)
@@ -89,8 +103,13 @@ def _hit(r: dict, score: float | None = None, max_chars: int | None = None) -> d
     }
 
 
-def search(query: str, k: int = 10, filters: Filters | None = None, mode: str = "hybrid",
-           max_chars: int | None = 1500) -> dict:
+def search(
+    query: str,
+    k: int = 10,
+    filters: Filters | None = None,
+    mode: str = "hybrid",
+    max_chars: int | None = 1500,
+) -> dict:
     """Busca híbrida: texto (FTS) + semântica (vetores, entre línguas) + conceitos, fundidas por RRF."""
     filters = filters or Filters()
     where, p = filters.sql("v")
@@ -101,12 +120,19 @@ def search(query: str, k: int = 10, filters: Filters | None = None, mode: str = 
 
     with connect() as conn:
         if mode in ("hybrid", "text"):
-            rankings.append(("texto", conn.execute(
-                f"""select v.chunk_id from v_chunk_context v
+            rankings.append(
+                (
+                    "texto",
+                    conn.execute(
+                        f"""select v.chunk_id from v_chunk_context v
                     join chunk c on c.id = v.chunk_id,
                          websearch_to_tsquery('simple', f_unaccent(lower(%(q)s))) q
                     where c.tsv @@ q and {where}
-                    order by ts_rank_cd(c.tsv, q) desc limit %(n)s""", p).fetchall()))
+                    order by ts_rank_cd(c.tsv, q) desc limit %(n)s""",
+                        p,
+                    ).fetchall(),
+                )
+            )
 
         if mode in ("hybrid", "vector"):
             try:
@@ -117,32 +143,54 @@ def search(query: str, k: int = 10, filters: Filters | None = None, mode: str = 
                 p["model"] = s.embedding_model
                 conn.execute("set local hnsw.iterative_scan = relaxed_order")
                 conn.execute("set local hnsw.ef_search = 200")
-                rankings.append(("semantica", conn.execute(
-                    f"""select v.chunk_id from chunk_embedding e
+                rankings.append(
+                    (
+                        "semantica",
+                        conn.execute(
+                            f"""select v.chunk_id from chunk_embedding e
                         join v_chunk_context v on v.chunk_id = e.chunk_id
                         where e.model = %(model)s and {where}
                         order by e.embedding::vector({s.embedding_dim}) <=> %(vec)s::vector({s.embedding_dim})
-                        limit %(n)s""", p).fetchall()))
+                        limit %(n)s""",
+                            p,
+                        ).fetchall(),
+                    )
+                )
             except Exception as e:  # sem embeddings ainda: segue só com texto
                 conn.rollback()
                 log.warning("busca semântica indisponível: %s", e)
 
         if concept_slugs and mode == "hybrid":
-            rankings.append(("conceito", conn.execute(
-                f"""select v.chunk_id from concept_mention m
+            rankings.append(
+                (
+                    "conceito",
+                    conn.execute(
+                        f"""select v.chunk_id from concept_mention m
                     join concept c on c.id = m.concept_id
                     join v_chunk_context v on v.chunk_id = m.chunk_id
                     where c.slug = any(%(concepts)s) and {where}
                     group by v.chunk_id, v.n_words
-                    order by sum(m.n)::float / greatest(v.n_words, 50) desc limit %(n)s""", p).fetchall()))
+                    order by sum(m.n)::float / greatest(v.n_words, 50) desc limit %(n)s""",
+                        p,
+                    ).fetchall(),
+                )
+            )
 
         scores: dict[int, float] = {}
         for _, rows in rankings:
             for rank, r in enumerate(rows, 1):
                 scores[r["chunk_id"]] = scores.get(r["chunk_id"], 0) + 1 / (RRF_K + rank)
         top = sorted(scores, key=scores.get, reverse=True)[:k]
-        rows = {r["chunk_id"]: r for r in conn.execute(
-            "select * from v_chunk_context where chunk_id = any(%s)", (top,)).fetchall()} if top else {}
+        rows = (
+            {
+                r["chunk_id"]: r
+                for r in conn.execute(
+                    "select * from v_chunk_context where chunk_id = any(%s)", (top,)
+                ).fetchall()
+            }
+            if top
+            else {}
+        )
 
     return {
         "consulta": query,
@@ -178,15 +226,18 @@ def list_concepts() -> list[dict]:
 def _concept_slug(conn, concept: str) -> str | None:
     row = conn.execute(
         """select slug from concept where slug = %(c)s or f_unaccent(lower(label)) = f_unaccent(lower(%(c)s))
-           limit 1""", {"c": concept}).fetchone()
+           limit 1""",
+        {"c": concept},
+    ).fetchone()
     if row:
         return row["slug"]
     found = match_query(concept)
     return found[0] if found else None
 
 
-def timeline(concept: str, granularity: str = "obra", filters: Filters | None = None,
-             min_words: int = 2000) -> dict:
+def timeline(
+    concept: str, granularity: str = "obra", filters: Filters | None = None, min_words: int = 2000
+) -> dict:
     """Frequência relativa (por 10 mil palavras) de um conceito ao longo do tempo.
 
     granularity: 'sessao' (datas exatas — seminários do Staferla), 'ano' ou 'obra'.
@@ -225,7 +276,9 @@ def timeline(concept: str, granularity: str = "obra", filters: Filters | None = 
             f"""select t.author, min(t.period_date) as primeira
                 from mv_concept_timeline t where t.concept=%(slug)s and t.mentions > 0
                   and t.period_date is not null and {where}
-                group by t.author order by 2 limit 15""", p).fetchall()
+                group by t.author order by 2 limit 15""",
+            p,
+        ).fetchall()
     for r in rows:
         for key in ("periodo",):
             if r.get(key):
@@ -280,7 +333,9 @@ def list_works(filters: Filters | None = None) -> list[dict]:
 
 def stats() -> dict:
     with connect() as conn:
-        docs = conn.execute("select status, count(*) as n from document group by 1 order by 2 desc").fetchall()
+        docs = conn.execute(
+            "select status, count(*) as n from document group by 1 order by 2 desc"
+        ).fetchall()
         lines = conn.execute(
             """select d.line, count(distinct d.id) as documentos, count(c.id) as trechos,
                       coalesce(sum(c.n_words), 0) as palavras
@@ -291,4 +346,9 @@ def stats() -> dict:
         runs = conn.execute(
             "select step, status, started_at, finished_at from pipeline_run order by id desc limit 10"
         ).fetchall()
-    return {"documentos_por_status": docs, "acervo_por_linha": lines, "embeddings": emb, "ultimas_execucoes": runs}
+    return {
+        "documentos_por_status": docs,
+        "acervo_por_linha": lines,
+        "embeddings": emb,
+        "ultimas_execucoes": runs,
+    }

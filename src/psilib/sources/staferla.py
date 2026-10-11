@@ -13,7 +13,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from urllib.parse import quote, urljoin, unquote
+from urllib.parse import quote, unquote, urljoin
 
 import httpx
 
@@ -31,7 +31,9 @@ class Client:
     def __init__(self):
         s = settings()
         self.http = httpx.Client(
-            headers={"User-Agent": s.http_user_agent}, timeout=httpx.Timeout(60, read=300), follow_redirects=True
+            headers={"User-Agent": s.http_user_agent},
+            timeout=httpx.Timeout(60, read=300),
+            follow_redirects=True,
         )
         self.delay = s.http_delay_seconds
         self._last = 0.0
@@ -118,8 +120,16 @@ def _text_slug(filename: str) -> str:
 
 def discover_archive(client: Client, include_freud: bool = False) -> list[dict]:
     """Captura mais recente (HTTP 200) de cada arquivo do Staferla na Wayback Machine. Prefere .docx."""
-    r = client.http.get(CDX, params={"url": "staferla.free.fr/*", "output": "json",
-                                     "filter": "statuscode:200", "fl": "original,timestamp"}, timeout=120)
+    r = client.http.get(
+        CDX,
+        params={
+            "url": "staferla.free.fr/*",
+            "output": "json",
+            "filter": "statuscode:200",
+            "fl": "original,timestamp",
+        },
+        timeout=120,
+    )
     r.raise_for_status()
     latest: dict[str, tuple[str, str]] = {}
     for original, ts in r.json()[1:]:
@@ -130,7 +140,7 @@ def discover_archive(client: Client, include_freud: bool = False) -> list[dict]:
 
     chosen: dict[tuple[str, str], dict] = {}
     for url, ts in latest.values():
-        path = unquote(url[len(BASE):]) if url.startswith(BASE) else None
+        path = unquote(url[len(BASE) :]) if url.startswith(BASE) else None
         if not path:
             continue
         folder, filename = path.split("/", 1) if "/" in path else ("", path)
@@ -143,8 +153,14 @@ def discover_archive(client: Client, include_freud: bool = False) -> list[dict]:
             kind, key = "freud", "de" if "gesammelte" in filename.lower() else "en"
         else:
             continue
-        item = {"kind": kind, "key": key, "url": url, "ext": ext, "wayback_ts": ts,
-                "download_url": f"https://web.archive.org/web/{ts}id_/{url}"}
+        item = {
+            "kind": kind,
+            "key": key,
+            "url": url,
+            "ext": ext,
+            "wayback_ts": ts,
+            "download_url": f"https://web.archive.org/web/{ts}id_/{url}",
+        }
         prev = chosen.get((kind, key))
         # .docx vence .pdf (tem as sessões marcadas); entre dois do mesmo tipo, a captura mais recente
         rank = lambda i: (i["ext"] == "docx", i["wayback_ts"])  # noqa: E731
@@ -167,7 +183,9 @@ def _spec(item: dict, path: Path, meta: dict) -> DocSpec:
         title = f"Staferla — {work.title if work else key}"
     else:
         work, author, line, lang = None, "Sigmund Freud", "freud", key
-        title = "Freud — Standard Edition (Staferla)" if key == "en" else "Freud — Gesammelte Werke (Staferla)"
+        title = (
+            "Freud — Standard Edition (Staferla)" if key == "en" else "Freud — Gesammelte Werke (Staferla)"
+        )
     return DocSpec(
         source_id="staferla",
         uri=item["url"],
@@ -185,8 +203,9 @@ def _spec(item: dict, path: Path, meta: dict) -> DocSpec:
     )
 
 
-def fetch(include_freud: bool = False, known: dict[str, dict] | None = None,
-          source: str = "auto") -> list[tuple[DocSpec, bool]]:
+def fetch(
+    include_freud: bool = False, known: dict[str, dict] | None = None, source: str = "auto"
+) -> list[tuple[DocSpec, bool]]:
     """Baixa o que é novo ou mudou. Devolve [(spec, mudou?)].
 
     source: 'site' (Staferla), 'arquivo' (Wayback Machine) ou 'auto' (site; se fora do ar, arquivo).
@@ -213,9 +232,18 @@ def fetch(include_freud: bool = False, known: dict[str, dict] | None = None,
             r = client.get(item["download_url"])
             r.raise_for_status()
             path.write_bytes(r.content)
-            meta = {"via": "wayback", "wayback_timestamp": item["wayback_ts"], "etag": None, "last_modified": None}
-            log.info("baixado do arquivo %s (captura %s, %d KB)", path.name, item["wayback_ts"][:8],
-                     len(r.content) // 1024)
+            meta = {
+                "via": "wayback",
+                "wayback_timestamp": item["wayback_ts"],
+                "etag": None,
+                "last_modified": None,
+            }
+            log.info(
+                "baixado do arquivo %s (captura %s, %d KB)",
+                path.name,
+                item["wayback_ts"][:8],
+                len(r.content) // 1024,
+            )
             out.append((_spec(item, path, meta), True))
             continue
         headers = {}
@@ -229,8 +257,12 @@ def fetch(include_freud: bool = False, known: dict[str, dict] | None = None,
             continue
         r.raise_for_status()
         path.write_bytes(r.content)
-        meta = {"via": "site", "wayback_timestamp": None,
-                "etag": r.headers.get("etag"), "last_modified": r.headers.get("last-modified")}
+        meta = {
+            "via": "site",
+            "wayback_timestamp": None,
+            "etag": r.headers.get("etag"),
+            "last_modified": r.headers.get("last-modified"),
+        }
         log.info("baixado %s (%d KB)", path.name, len(r.content) // 1024)
         out.append((_spec(item, path, meta), True))
     return out

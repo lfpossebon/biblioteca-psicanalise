@@ -52,7 +52,9 @@ def _anchored_date(text: str):
 def extract(path: str | Path) -> Extraction:
     path = Path(path)
     paras = list(_paragraphs(path))
-    has_anchored_dates = any(anchored and (session_heading_date(t) or _anchored_date(t)) for t, _, anchored in paras)
+    has_anchored_dates = any(
+        anchored and (session_heading_date(t) or _anchored_date(t)) for t, _, anchored in paras
+    )
 
     segments: list[Segment] = []
     buf: list[str] = []

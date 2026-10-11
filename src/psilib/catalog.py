@@ -83,7 +83,15 @@ def upsert_work(conn, work: WorkRef | None, author_id: int | None) -> int | None
            on conflict (slug) do update set title = excluded.title, year_start = excluded.year_start,
                year_end = excluded.year_end, author_id = coalesce(excluded.author_id, work.author_id)
            returning id""",
-        (work.slug, work.title, author_id, work.work_type, work.seminar_number, work.year_start, work.year_end),
+        (
+            work.slug,
+            work.title,
+            author_id,
+            work.work_type,
+            work.seminar_number,
+            work.year_start,
+            work.year_end,
+        ),
     ).fetchone()["id"]
 
 
@@ -109,9 +117,22 @@ def upsert_document(conn, spec: DocSpec, changed: bool = False) -> tuple[int, st
             """insert into document (source_id, uri, local_path, title, author_id, work_id, line, language,
                    year_publication, file_type, bytes, status, scope_reason, meta)
                values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
-            (spec.source_id, spec.uri, spec.local_path, spec.title, author_id, work_id, spec.line,
-             spec.language, spec.year_publication, spec.file_type, spec.bytes, new_status,
-             spec.scope_reason, json.dumps(spec.meta)),
+            (
+                spec.source_id,
+                spec.uri,
+                spec.local_path,
+                spec.title,
+                author_id,
+                work_id,
+                spec.line,
+                spec.language,
+                spec.year_publication,
+                spec.file_type,
+                spec.bytes,
+                new_status,
+                spec.scope_reason,
+                json.dumps(spec.meta),
+            ),
         ).fetchone()["id"]
         return doc_id, new_status
 
@@ -127,8 +148,21 @@ def upsert_document(conn, spec: DocSpec, changed: bool = False) -> tuple[int, st
                language=coalesce(%s, language), year_publication=coalesce(%s, year_publication),
                file_type=%s, bytes=%s, status=%s, scope_reason=%s, meta = meta || %s, updated_at=now()
            where id=%s""",
-        (spec.local_path, spec.title, author_id, work_id, spec.line, spec.language, spec.year_publication,
-         spec.file_type, spec.bytes, status, spec.scope_reason, json.dumps(spec.meta), doc_id),
+        (
+            spec.local_path,
+            spec.title,
+            author_id,
+            work_id,
+            spec.line,
+            spec.language,
+            spec.year_publication,
+            spec.file_type,
+            spec.bytes,
+            status,
+            spec.scope_reason,
+            json.dumps(spec.meta),
+            doc_id,
+        ),
     )
     return doc_id, status
 

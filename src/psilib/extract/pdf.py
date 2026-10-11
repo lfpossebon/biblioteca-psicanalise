@@ -42,7 +42,7 @@ def clean_pages(pages: list[str]) -> list[str]:
                 continue
             kept.append(ln)
         text = "\n".join(kept)
-        text = re.sub(r"(\w)[-­]\n(\w)", r"\1\2", text)          # sig-\nnificante → significante
+        text = re.sub(r"(\w)[-­]\n(\w)", r"\1\2", text)  # sig-\nnificante → significante
         text = re.sub(r"[ \t]+", " ", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
         out.append(text.strip())
@@ -71,11 +71,21 @@ def ocr(path: str | Path, sha256: str) -> Path | None:
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
-        "ocrmypdf", "--skip-text", "--jobs", "4", "--output-type", "pdf", "--optimize", "0",
-        "-l", settings().ocr_languages, str(path), str(out),
+        "ocrmypdf",
+        "--skip-text",
+        "--jobs",
+        "4",
+        "--output-type",
+        "pdf",
+        "--optimize",
+        "0",
+        "-l",
+        settings().ocr_languages,
+        str(path),
+        str(out),
     ]
     log.info("OCR: %s", Path(path).name)
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
     if proc.returncode not in (0, 6):  # 6 = já tinha texto
         log.error("OCR falhou (%s): %s", proc.returncode, proc.stderr[-500:])
         return None

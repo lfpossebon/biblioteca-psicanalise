@@ -68,14 +68,20 @@ def to_row(w: dict) -> dict:
         "year": w.get("publication_year"),
         "language": w.get("language"),
         "url": w.get("doi") or loc.get("landing_page_url") or w["id"],
-        "oa_pdf_url": oa.get("oa_url") if (oa.get("oa_url") or "").lower().endswith(".pdf") else (loc.get("pdf_url")),
+        "oa_pdf_url": oa.get("oa_url")
+        if (oa.get("oa_url") or "").lower().endswith(".pdf")
+        else (loc.get("pdf_url")),
         "abstract": _abstract(w.get("abstract_inverted_index")),
         "payload": json.dumps({k: w.get(k) for k in ("id", "doi", "publication_date", "type")}),
     }
 
 
 def default_since(conn) -> date:
-    row = conn.execute("select max(first_seen)::date as d from watch_item where source_id='openalex'").fetchone()
-    return (row["d"] - timedelta(days=7)) if row and row["d"] else date.fromisoformat(
-        load_yaml("sources.yaml")["openalex"]["start_date"]
+    row = conn.execute(
+        "select max(first_seen)::date as d from watch_item where source_id='openalex'"
+    ).fetchone()
+    return (
+        (row["d"] - timedelta(days=7))
+        if row and row["d"]
+        else date.fromisoformat(load_yaml("sources.yaml")["openalex"]["start_date"])
     )
