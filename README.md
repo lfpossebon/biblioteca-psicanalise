@@ -58,6 +58,37 @@ Com o MCP registrado, pergunte em português, por exemplo:
 Ferramentas expostas: `buscar`, `ler_trecho`, `linha_do_tempo`, `conceitos_relacionados`,
 `listar_conceitos`, `listar_obras`, `estatisticas_acervo`.
 
+## Chat da POC (avaliação com especialistas)
+
+Página de chat em `/chat` (local: http://localhost:8010/chat): o Claude Opus 5.5 responde consultando
+a biblioteca e cita os trechos com notas (autor, obra, sessão, página). Precisa de `ANTHROPIC_API_KEY`
+no `.env` (depois, `docker compose up -d app`).
+
+- Acesso aberto e anônimo. Limites: `CHAT_DAILY_LIMIT` perguntas por conexão por dia (IP guardado só
+  como hash) e `CHAT_DAILY_BUDGET_USD` de gasto total por dia.
+- Perguntas, respostas, custo e avaliações (👍/👎 + comentário) ficam em `chat_turn`.
+  Resumo: `docker compose run --rm pipeline chat-relatorio` (local) ou `./scripts/relatorio_nuvem.sh` (nuvem).
+- Citações só valem para trechos que a busca devolveu; o leitor vê no máximo 300 caracteres de cada.
+
+### Na nuvem (Railway)
+
+Projeto `biblioteca-psicanalise`, dois serviços:
+
+| Serviço | O que é | Variáveis principais |
+|---|---|---|
+| `db` | `pgvector/pgvector:0.8.0-pg16` + volume em `/var/lib/postgresql/data` | `POSTGRES_*`, `PGDATA` |
+| `app` | esta imagem (Dockerfile, `railway.json`), domínio público | `PUBLIC_MODE=true`, `BAKE_MODEL=1`, `HF_HUB_OFFLINE=1`, `DATABASE_URL` (referência a `db`), `ANTHROPIC_API_KEY`, `CHAT_*` |
+
+- Novo deploy do código: `railway up --service app --ci`.
+- Pausar a POC (para de cobrar memória): no painel, *app → Settings → Pause*; ou `railway down --service app`.
+- Logs: `railway logs --service app`.
+- Relatório da POC na nuvem (perguntas, custo, avaliações e comentários): `./scripts/relatorio_nuvem.sh [dias]`
+  (abre um túnel temporário para o banco e o fecha ao terminar).
+- Endereço público: https://app-production-aebe.up.railway.app
+- O banco foi carregado uma vez com `scripts/publish_db.sh` (exige destino vazio, para nunca apagar
+  as conversas). Para atualizar o acervo na nuvem, recrie o banco ou atualize tabela a tabela.
+- Com `PUBLIC_MODE=true` não há `/docs`, REST nem MCP: só `/chat`, `/health` e `/ready`.
+
 ## Curadoria do escopo
 
 - **Entram:** Freud, Lacan, comentadores lacanianos e freudianos, escola argentina, dicionários.
