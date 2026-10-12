@@ -255,12 +255,13 @@ def timeline(
             "obra": ("min(t.period_date)", "t.period_date is not null"),
         }[granularity]
         if granularity == "obra":
+            # Sem obra canônica, o título do próprio documento serve de rótulo.
             sql = f"""select coalesce(t.work_slug, 'doc-' || t.document_id) as chave,
-                             max(coalesce(t.work_title, '')) as obra, max(t.author) as autor,
+                             max(coalesce(t.work_title, d.title, '')) as obra, max(t.author) as autor,
                              min(t.period_date) as periodo, sum(t.mentions) as mencoes,
                              sum(t.words) as palavras,
                              round(10000.0 * sum(t.mentions) / nullif(sum(t.words), 0), 2) as por_10k
-                      from mv_concept_timeline t
+                      from mv_concept_timeline t join document d on d.id = t.document_id
                       where t.concept = %(slug)s and {group[1]} and {where}
                       group by 1 having sum(t.words) >= %(min_words)s order by periodo"""
         else:

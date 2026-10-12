@@ -11,7 +11,7 @@ import pytest
 from anthropic.types.beta import BetaMessage
 from fastapi.testclient import TestClient
 
-from psilib import chat, config, db, embeddings
+from psilib import chat, config, db
 
 ANA = "11111111-1111-4111-8111-111111111111"
 BRUNO = "22222222-2222-4222-8222-222222222222"
@@ -48,10 +48,10 @@ def test_tool_definitions_are_valid_schemas():
 
 
 def test_run_tool_rejects_invalid_input():
-    content, is_error = chat.run_tool("buscar", {"k": 50}, {})
+    content, is_error = chat.run_tool("buscar", {"k": 50}, chat.TurnContext())
     assert is_error
     assert json.loads(content)["erro"] == "argumentos inválidos"
-    _, is_error = chat.run_tool("apagar_tudo", {}, {})
+    _, is_error = chat.run_tool("apagar_tudo", {}, chat.TurnContext())
     assert is_error
 
 
@@ -100,17 +100,6 @@ class FakeClient:
         return FakeStream(step(kwargs) if callable(step) else step)
 
 
-@pytest.fixture
-def chat_env(seeded, monkeypatch):
-    def no_vectors(*_a, **_k):
-        raise RuntimeError("sem modelo nos testes")
-
-    monkeypatch.setattr(embeddings, "embed", no_vectors)  # busca segue só com texto + conceitos
-    yield
-    monkeypatch.undo()
-    config.settings.cache_clear()
-
-
 def _install(monkeypatch, script) -> FakeClient:
     fake = FakeClient(script)
     monkeypatch.setattr(chat, "_client", lambda: fake)
@@ -156,6 +145,9 @@ def test_answer_runs_tools_and_validates_citations(chat_env, monkeypatch):
     assert len(fim["citacoes"]) == 1
     assert fim["citacoes"][0]["n"] == 1
     assert "sessão de" in fim["citacoes"][0]["citacao"]
+    # dados para a cronologia das fontes: data da sessão e linha teórica
+    assert fim["citacoes"][0]["precisao"] == "dia" and fim["citacoes"][0]["linha"] == "lacan"
+    assert fim["citacoes"][0]["periodo"].startswith("196")
     assert len(fim["citacoes"][0]["trecho"]) <= chat.EXCERPT_CHARS + 1
     assert fim["invalidas"] == [999999]
 
@@ -236,6 +228,7 @@ def test_last_step_forbids_tools(chat_env, monkeypatch):
 @pytest.mark.integration
 def test_public_mode_exposes_only_chat(chat_env, monkeypatch):
     monkeypatch.setenv("PUBLIC_MODE", "true")
+    monkeypatch.setenv("MIGRATE_ON_STARTUP", "true")  # idempotente: no banco de teste não há pendências
     config.settings.cache_clear()
     from psilib.api import create_app
 
@@ -246,6 +239,8 @@ def test_public_mode_exposes_only_chat(chat_env, monkeypatch):
         assert client.get("/openapi.json").status_code == 404
         assert client.get("/mcp").status_code == 404
         assert client.get("/chat").status_code == 200
+        js = client.get("/chat/viz.js")
+        assert js.status_code == 200 and "javascript" in js.headers["content-type"]
         assert client.get("/", follow_redirects=False).headers["location"] == "/chat"
         assert client.post("/chat/api/sessao").status_code in (404, 405)  # sem convite: não há sessão
 

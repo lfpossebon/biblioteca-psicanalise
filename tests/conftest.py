@@ -10,7 +10,7 @@ from urllib.parse import urlsplit, urlunsplit
 import psycopg
 import pytest
 
-from psilib import config, db, pipeline
+from psilib import config, db, embeddings, pipeline
 
 TEST_DB = "psilib_test"
 
@@ -86,3 +86,16 @@ def seeded(test_db):
 
     stats = {"chunk": pipeline.chunk(), "concepts": pipeline.concepts(), "refresh": pipeline.refresh()}
     return {"document_id": doc_id, "stats": stats}
+
+
+@pytest.fixture
+def chat_env(seeded, monkeypatch):
+    """Chat sobre o banco de teste, sem modelo de embeddings (busca só com texto + conceitos)."""
+
+    def no_vectors(*_a, **_k):
+        raise RuntimeError("sem modelo nos testes")
+
+    monkeypatch.setattr(embeddings, "embed", no_vectors)  # busca segue só com texto + conceitos
+    yield
+    monkeypatch.undo()
+    config.settings.cache_clear()

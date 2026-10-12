@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="/chat/viz.js"></script>
 <style>
   :root {
     --bg: #faf8f5; --surface: #ffffff; --text: #1f1d1a; --muted: #6b665e; --border: #e4dfd6;
@@ -182,8 +183,8 @@ async function ask(pergunta) {
   addMessage("user").innerHTML = `<div class="bubble"></div>`;
   $("log").lastChild.firstChild.textContent = pergunta;
   const bot = addMessage("bot");
-  bot.innerHTML = `<div class="status">Consultando a biblioteca…</div><div class="answer"></div>`;
-  const status = bot.querySelector(".status"), answer = bot.querySelector(".answer");
+  bot.innerHTML = `<div class="status">Consultando a biblioteca…</div><div class="figs"></div><div class="answer"></div>`;
+  const status = bot.querySelector(".status"), answer = bot.querySelector(".answer"), figs = bot.querySelector(".figs");
   bot.scrollIntoView({ behavior: "smooth", block: "start" });
 
   let text = "", pending = false;
@@ -206,6 +207,7 @@ async function ask(pergunta) {
         const ev = JSON.parse(line.slice(6));
         if (ev.tipo === "conversa") conversa = ev.id;
         else if (ev.tipo === "status") status.textContent = ev.texto;
+        else if (ev.tipo === "visual") figs.appendChild(Viz.figure(ev.visual));
         else if (ev.tipo === "texto") {
           text += ev.texto;
           status.textContent = "Escrevendo…";
@@ -219,6 +221,8 @@ async function ask(pergunta) {
           status.remove();
           turnSeq = seq;
           answer.innerHTML = render(text, ev.citacoes);
+          const chrono = Viz.sources(ev.citacoes, seq);
+          if (chrono) bot.appendChild(chrono);
           if (ev.citacoes.length) {
             const notes = document.createElement("div");
             notes.className = "notes";

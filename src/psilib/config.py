@@ -45,6 +45,8 @@ class Settings(BaseSettings):
 
     # Implantação pública (POC): só o chat é servido; API REST, /docs e MCP ficam desligados.
     public_mode: bool = False
+    # Aplica migrações pendentes ao subir a API (na nuvem, onde não há `make migrate`).
+    migrate_on_startup: bool = False
 
     # Chat da POC (a chave vem de ANTHROPIC_API_KEY, lida pelo próprio SDK)
     chat_model: str = "claude-opus-5-5"

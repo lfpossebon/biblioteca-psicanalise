@@ -17,12 +17,13 @@ import re
 import time
 import uuid
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from typing import Literal
 
 import anthropic
 from pydantic import BaseModel, Field, ValidationError
 
-from psilib import service
+from psilib import service, visuals
 from psilib.config import settings
 from psilib.db import connect
 from psilib.service import Filters
@@ -52,6 +53,9 @@ uma busca quando a pergunta tiver várias partes ou quando os primeiros resultad
 - Use ler_trecho para ler o contexto antes de apoiar um argumento num trecho curto ou ambíguo.
 - Para evolução e relações entre conceitos, use linha_do_tempo e conceitos_relacionados. \
 Frequência indica onde ler, não o que o conceito significa.
+- Figuras: em perguntas sobre evolução no tempo, comparação entre conceitos, onde um conceito pesa \
+mais ou com que conceitos se associa, mostre uma figura com mostrar_visual (no máximo 3 por resposta) \
+e comente-a no texto como "Figura N". Os números da figura vêm do acervo; não os repita todos no texto.
 - Se o acervo não tiver material suficiente, diga isso com clareza. Se recorrer a conhecimento \
 geral, sinalize que não vem do acervo.
 
@@ -80,6 +84,14 @@ class ChatError(Exception):
 
 
 # ------------------------------------------------------------------ ferramentas
+
+
+@dataclass
+class TurnContext:
+    """Estado de uma resposta: trechos vistos (citáveis) e figuras exibidas."""
+
+    seen: dict = field(default_factory=dict)
+    visuals: list[dict] = field(default_factory=list)
 
 
 class Buscar(BaseModel):
@@ -126,6 +138,24 @@ class ListarConceitos(BaseModel):
     """Conceitos do léxico (slug, rótulo, família) com o total de menções no acervo."""
 
 
+class MostrarVisual(BaseModel):
+    """Mostra ao leitor uma figura com dados do acervo; o sistema desenha, você só escolhe.
+    linha_do_tempo: evolução de 1 a 3 conceitos (comparados) por ano ou por sessão dos seminários.
+    peso_por_obra: em que obras ou seminários um conceito pesa mais. relacionados: conceitos que se
+    associam a um conceito (PMI). Depois, comente a figura no texto como "Figura N"."""
+
+    tipo: Literal["linha_do_tempo", "peso_por_obra", "relacionados"]
+    conceitos: list[str] = Field(
+        min_length=1, max_length=3, description="Slugs ou nomes; só linha_do_tempo usa mais de um"
+    )
+    granularidade: Literal["ano", "sessao"] = Field(
+        "ano", description="linha_do_tempo: 'sessao' só para os seminários (use linhas=['lacan'])"
+    )
+    linhas: list[Linha] | None = None
+    autor: str | None = None
+    titulo: str | None = Field(None, max_length=90, description="Título curto; opcional")
+
+
 class ListarObras(BaseModel):
     """Obras indexadas, com período, língua e tamanho (até 80)."""
 
@@ -149,31 +179,34 @@ def _remember(seen: dict, hits: list[dict]) -> None:
             "citacao": h["citacao"],
             "autor": h["autor"],
             "obra": h["obra"],
+            "linha": h["linha"],
+            "periodo": h["sessao"] or h["periodo"],  # data do pensamento: sessão, senão ano da obra
+            "precisao": "dia" if h["sessao"] else ("ano" if h["periodo"] else None),
             "trecho": h["texto"][:EXCERPT_CHARS] + ("…" if len(h["texto"]) > EXCERPT_CHARS else ""),
         }
 
 
-def _buscar(a: Buscar, seen: dict) -> dict:
+def _buscar(a: Buscar, ctx: TurnContext) -> dict:
     f = Filters(
         lines=a.linhas, author=a.autor, work=a.obra, language=a.lingua, year_from=a.ano_de, year_to=a.ano_ate
     )
     res = service.search(a.consulta, a.k, f)
-    _remember(seen, res["resultados"])
+    _remember(ctx.seen, res["resultados"])
     return {
         "conceitos_reconhecidos": res["conceitos_reconhecidos"],
         "resultados": [_slim(h) for h in res["resultados"]],
     }
 
 
-def _ler_trecho(a: LerTrecho, seen: dict) -> dict:
+def _ler_trecho(a: LerTrecho, ctx: TurnContext) -> dict:
     res = service.read_chunk(a.chunk_id, a.contexto)
     if "erro" in res:
         return res
-    _remember(seen, res["trechos"])
+    _remember(ctx.seen, res["trechos"])
     return {"trechos": [_slim(h) for h in res["trechos"]]}
 
 
-def _linha_do_tempo(a: LinhaDoTempo, _seen: dict) -> dict:
+def _linha_do_tempo(a: LinhaDoTempo, _ctx: TurnContext) -> dict:
     res = service.timeline(a.conceito, a.granularidade, Filters(lines=a.linhas, author=a.autor))
     if "erro" in res:
         return res
@@ -182,16 +215,27 @@ def _linha_do_tempo(a: LinhaDoTempo, _seen: dict) -> dict:
     return res
 
 
-def _relacionados(a: ConceitosRelacionados, _seen: dict) -> dict:
+def _relacionados(a: ConceitosRelacionados, _ctx: TurnContext) -> dict:
     return service.cooccurrence(a.conceito, a.limite)
 
 
-def _listar_conceitos(_a: ListarConceitos, _seen: dict) -> list[dict]:
+def _listar_conceitos(_a: ListarConceitos, _ctx: TurnContext) -> list[dict]:
     return service.list_concepts()
 
 
-def _listar_obras(a: ListarObras, _seen: dict) -> list[dict]:
+def _listar_obras(a: ListarObras, _ctx: TurnContext) -> list[dict]:
     return service.list_works(Filters(lines=a.linhas, author=a.autor, language=a.lingua))[:80]
+
+
+def _mostrar_visual(a: MostrarVisual, ctx: TurnContext) -> dict:
+    if len(ctx.visuals) >= 3:
+        raise visuals.VisualError("limite de 3 figuras por resposta atingido")
+    spec = visuals.build(
+        a.tipo, a.conceitos, a.granularidade, Filters(lines=a.linhas, author=a.autor), a.titulo
+    )
+    spec["figura"] = len(ctx.visuals) + 1
+    ctx.visuals.append(spec)
+    return visuals.summary(spec)
 
 
 TOOLS = {
@@ -201,6 +245,7 @@ TOOLS = {
     "conceitos_relacionados": (ConceitosRelacionados, _relacionados),
     "listar_conceitos": (ListarConceitos, _listar_conceitos),
     "listar_obras": (ListarObras, _listar_obras),
+    "mostrar_visual": (MostrarVisual, _mostrar_visual),
 }
 
 
@@ -215,7 +260,7 @@ def tool_definitions() -> list[dict]:
     return out
 
 
-def run_tool(name: str, raw_input: object, seen: dict) -> tuple[str, bool]:
+def run_tool(name: str, raw_input: object, ctx: TurnContext) -> tuple[str, bool]:
     """Executa a ferramenta; devolve (conteúdo JSON, is_error). Entradas inválidas viram erro para o modelo."""
     if name not in TOOLS:
         return json.dumps({"erro": f"ferramenta desconhecida: {name}"}), True
@@ -227,7 +272,9 @@ def run_tool(name: str, raw_input: object, seen: dict) -> tuple[str, bool]:
             {"erro": "argumentos inválidos", "detalhes": e.errors(include_url=False)}, default=str
         ), True
     try:
-        return json.dumps(fn(args, seen), ensure_ascii=False, default=str), False
+        return json.dumps(fn(args, ctx), ensure_ascii=False, default=str), False
+    except visuals.VisualError as e:
+        return json.dumps({"erro": str(e)}, ensure_ascii=False), True
     except Exception:
         log.exception("ferramenta %s falhou", name)
         return json.dumps({"erro": "falha interna ao consultar a biblioteca"}), True
@@ -243,6 +290,8 @@ def describe(name: str, raw_input: dict) -> str:
         return f"Montando a linha do tempo: {raw_input.get('conceito', '')}"
     if name == "conceitos_relacionados":
         return f"Mapeando conceitos relacionados a {raw_input.get('conceito', '')}"
+    if name == "mostrar_visual":
+        return "Desenhando a figura"
     return "Consultando o catálogo"
 
 
@@ -370,6 +419,7 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
     usage = {"input_tokens": 0, "output_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0}
     tool_calls: list[dict] = []
     texts: list[str] = []
+    ctx = TurnContext(seen=seen)
     model_used, stop_reason, error = s.chat_model, None, None
     tools = tool_definitions()
 
@@ -434,8 +484,11 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
                     "tipo": "status",
                     "texto": describe(b.name, b.input if isinstance(b.input, dict) else {}),
                 }
-                content, is_error = run_tool(b.name, b.input, seen)
+                shown = len(ctx.visuals)
+                content, is_error = run_tool(b.name, b.input, ctx)
                 tool_calls.append({"nome": b.name, "args": b.input, "erro": is_error})
+                for spec in ctx.visuals[shown:]:  # figura pronta: vai para a tela antes do texto
+                    yield {"tipo": "visual", "visual": spec}
                 results.append(
                     {"type": "tool_result", "tool_use_id": b.id, "content": content, "is_error": is_error}
                 )
@@ -453,7 +506,7 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
         yield {"tipo": "erro", "texto": "Ocorreu um erro inesperado. Tente de novo."}
 
     final_text = "\n\n".join(t for t in texts if t.strip())
-    notes, invalid = resolve_citations(final_text, seen)
+    notes, invalid = resolve_citations(final_text, ctx.seen)
     if invalid:
         log.warning("citações sem trecho correspondente: %s", invalid)
     cost = cost_usd(usage)
@@ -467,7 +520,7 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
                 """insert into chat_conversation (id, visitor, messages, seen) values (%s, %s, %s, %s)
                    on conflict (id) do update set messages = excluded.messages, seen = excluded.seen,
                        updated_at = now()""",
-                (cid, visitor, json.dumps(messages), json.dumps(seen)),
+                (cid, visitor, json.dumps(messages), json.dumps(ctx.seen)),
             )
         elif new_conversation:
             conn.execute(
@@ -476,18 +529,21 @@ def answer(visitor: str, key: str, question: str, conversation_id: str | None = 
             )
         turn_id = conn.execute(
             """insert into chat_turn (conversation_id, visitor, client_key, question, answer, citations,
-                   invalid_citations, tool_calls, model, input_tokens, output_tokens, cache_read_tokens,
-                   cache_write_tokens, cost_usd, latency_ms, stop_reason, error)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
+                   invalid_citations, tool_calls, visuals, model, input_tokens, output_tokens,
+                   cache_read_tokens, cache_write_tokens, cost_usd, latency_ms, stop_reason, error)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
             (
                 cid, visitor, key, question, final_text, json.dumps(notes), json.dumps(invalid),
-                json.dumps(tool_calls, default=str), model_used, usage["input_tokens"], usage["output_tokens"],
+                json.dumps(tool_calls, default=str), json.dumps(ctx.visuals), model_used, usage["input_tokens"], usage["output_tokens"],
                 usage["cache_read_tokens"], usage["cache_write_tokens"], cost, latency, stop_reason, error,
             ),
         ).fetchone()["id"]  # fmt: skip
         conn.commit()
 
-    log.info("chat: %s | %d ferramentas | US$ %.4f | %d ms", visitor[:8], len(tool_calls), cost, latency)
+    log.info(
+        "chat: %s | %d ferramentas | %d figuras | US$ %.4f | %d ms",
+        visitor[:8], len(tool_calls), len(ctx.visuals), cost, latency,
+    )  # fmt: skip
     if error is None:
         yield {"tipo": "fim", "turno": turn_id, "citacoes": notes, "invalidas": invalid}
 

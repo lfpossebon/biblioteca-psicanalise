@@ -6,20 +6,23 @@ a API REST, o /docs e o MCP — que expõem o texto integral do acervo — ficam
 """
 
 import json
+import logging
 import threading
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 
+import anyio
 from fastapi import APIRouter, FastAPI, Header, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from psilib import chat, embeddings, service
+from psilib import chat, db, embeddings, service
 from psilib.config import settings
 from psilib.service import Filters
 
 STATIC = Path(__file__).parent / "static"
+log = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------ health checks
 
@@ -146,6 +149,13 @@ def chat_page():
     return FileResponse(STATIC / "chat.html", headers={"Cache-Control": "no-cache"})
 
 
+@chat_router.get("/viz.js", include_in_schema=False)
+def chat_viz():
+    return FileResponse(
+        STATIC / "viz.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"}
+    )
+
+
 @chat_router.post("/api/mensagem")
 def chat_mensagem(body: Mensagem, request: Request, visitante: Visitante = None):
     visitor, key = chat.visitor_id(visitante), chat.client_key(_client_ip(request))
@@ -183,6 +193,9 @@ def create_app() -> FastAPI:
     async def lifespan(_app: FastAPI):
         # Carrega o modelo de embeddings em background: a API sobe na hora e /ready só fica
         # verde quando a primeira busca não vai mais pagar o cold start (~2 GB na memória).
+        if settings().migrate_on_startup:
+            applied = await anyio.to_thread.run_sync(db.migrate)
+            log.info("migrações aplicadas ao subir: %s", applied or "nenhuma pendente")
         if settings().embedding_warmup:
             threading.Thread(target=embeddings.warmup, name="embeddings-warmup", daemon=True).start()
         async with AsyncExitStack() as stack:
