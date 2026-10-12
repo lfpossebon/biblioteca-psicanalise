@@ -37,8 +37,15 @@
   textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   #log { padding-bottom: 180px; }
-  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-  .examples button { font-size: .85rem; text-align: left; }
+  .lead { font-family: var(--serif); font-size: 1.08rem; line-height: 1.55; margin: 22px 0 14px; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .mode { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .mode h2 { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
+  .mode p { font-size: .88rem; color: var(--muted); margin: 0 0 10px; }
+  .ex { display: flex; flex-direction: column; gap: 6px; }
+  .ex button { font-size: .85rem; text-align: left; }
+  .tip { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
+  .tip strong { color: var(--text); }
   .msg { margin: 22px 0; }
   .msg.user .bubble { background: var(--user); border-radius: 12px; padding: 10px 14px; white-space: pre-wrap; margin-left: 15%; }
   .msg.bot .answer { font-family: var(--serif); font-size: 1.06rem; line-height: 1.65; }
@@ -78,17 +85,50 @@
 
 <main class="wrap">
   <section id="app">
-    <div class="notice">
-      <strong>Prova de conceito acadêmica, aberta para teste.</strong> As respostas são geradas por IA (Claude) a partir de um acervo de
-      seminários, Escritos, Freud e comentadores, com notas que indicam autor, obra, sessão e página. Confira sempre
-      nas fontes. Perguntas, respostas e avaliações ficam registradas para avaliar a ferramenta.
-      <strong>Não inclua material clínico nem dados que identifiquem pacientes.</strong>
-    </div>
-    <div class="examples" id="examples">
-      <button type="button">Como Lacan define o objeto a no Seminário 10?</button>
-      <button type="button">Como o gozo ganha peso ao longo dos seminários?</button>
-      <button type="button">Qual a diferença entre sintoma e sinthoma?</button>
-      <button type="button">O que Eidelsztein critica na leitura usual do Outro?</button>
+    <div id="examples">
+      <p class="lead">
+        Uma biblioteca de Freud, Lacan e comentadores lacanianos (incluindo a escola argentina) que você consulta
+        escrevendo como numa conversa. Pergunte em português: a busca também encontra os trechos em francês e espanhol.
+        Há dois jeitos de usar:
+      </p>
+      <div class="modes">
+        <section class="mode">
+          <h2>Perguntar e ler as fontes</h2>
+          <p>
+            Peça a explicação de um conceito, compare autores ou localize uma passagem. A resposta cita os trechos em
+            notas (autor, obra, sessão, página) e situa numa linha do tempo as fontes usadas.
+          </p>
+          <div class="ex">
+            <button type="button">Como Lacan define o objeto a no Seminário 10?</button>
+            <button type="button">Qual a diferença entre sintoma e sinthoma?</button>
+            <button type="button">O que Eidelsztein critica na leitura usual do Outro?</button>
+          </div>
+        </section>
+        <section class="mode">
+          <h2>Explorar os termos no tempo</h2>
+          <p>
+            Veja em gráficos como um termo ganha ou perde peso ao longo do ensino (por ano, ou sessão a sessão nos
+            seminários), compare até três conceitos, descubra em que obras um conceito pesa mais e com quais outros
+            ele aparece associado.
+          </p>
+          <div class="ex">
+            <button type="button">Como o gozo ganha peso ao longo dos seminários?</button>
+            <button type="button">Compare gozo, desejo e objeto a ao longo do ensino de Lacan</button>
+            <button type="button">Em que obras o sinthoma pesa mais?</button>
+            <button type="button">Quais conceitos mais se associam ao Nome-do-Pai?</button>
+          </div>
+        </section>
+      </div>
+      <p class="tip">
+        <strong>Dica:</strong> diga o recorte que interessa: um seminário, um período ("entre 1964 e 1970"), uma
+        língua ou um autor. E continue a conversa para aprofundar ("mostre por sessão", "e em Freud?").
+        Os gráficos medem a frequência dos termos no acervo: indicam onde ler, não o que o conceito significa.
+      </p>
+      <div class="notice">
+        <strong>Prova de conceito acadêmica, aberta para teste.</strong> As respostas são geradas por IA (Claude) e
+        levam de 1 a 2 minutos. Confira sempre nas fontes. Perguntas, respostas e avaliações (👍/👎) ficam registradas
+        para avaliar a ferramenta. <strong>Não inclua material clínico nem dados que identifiquem pacientes.</strong>
+      </div>
     </div>
     <div id="log" aria-live="polite"></div>
   </section>
@@ -97,7 +137,7 @@
 <footer id="footer">
   <div class="wrap">
     <form id="ask">
-      <textarea id="q" rows="1" placeholder="Pergunte sobre um conceito, uma obra, um autor…" aria-label="Pergunta" maxlength="4000"></textarea>
+      <textarea id="q" rows="1" placeholder="Escreva sua pergunta…" aria-label="Pergunta" maxlength="4000"></textarea>
       <button class="primary" id="enviar" type="submit">Enviar</button>
     </form>
     <div class="hint">Enter envia · Shift+Enter quebra a linha</div>
@@ -259,7 +299,7 @@ $("ask").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q"
 $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); } });
 const autosize = () => { $("q").style.height = "auto"; $("q").style.height = Math.min($("q").scrollHeight, 200) + "px"; };
 $("q").addEventListener("input", autosize);
-$("examples").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => ask(b.textContent)));
+$("examples").querySelectorAll(".ex button").forEach((b) => b.addEventListener("click", () => ask(b.textContent)));
 $("nova").addEventListener("click", () => { if (busy) return; conversa = null; $("log").innerHTML = ""; $("examples").hidden = false; $("q").focus(); });
 $("q").focus();
 </script>
