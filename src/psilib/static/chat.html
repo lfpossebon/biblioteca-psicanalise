@@ -32,20 +32,22 @@
   button:hover:not(:disabled) { border-color: var(--accent); }
   button:disabled { opacity: .5; cursor: default; }
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-  .notice { font-size: .85rem; color: var(--muted); background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin: 20px 0; }
-  .notice strong { color: var(--text); }
   textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   #log { padding-bottom: 180px; }
-  .lead { font-family: var(--serif); font-size: 1.08rem; line-height: 1.55; margin: 22px 0 14px; }
-  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-  .mode { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
-  .mode h2 { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
-  .mode p { font-size: .88rem; color: var(--muted); margin: 0 0 10px; }
-  .ex { display: flex; flex-direction: column; gap: 6px; }
-  .ex button { font-size: .85rem; text-align: left; }
-  .tip { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
-  .tip strong { color: var(--text); }
+  .lead { font-family: var(--serif); font-size: 1.25rem; line-height: 1.5; margin: 12vh 0 28px; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 24px; }
+  .mode { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .mode h2 { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 4px; }
+  .mode button { border: none; background: none; padding: 3px 0; font-size: .92rem; color: var(--text); text-align: left; border-radius: 0; }
+  .mode button:hover { color: var(--accent); }
+  .mode button::after { content: " →"; color: var(--muted); }
+  @media (max-width: 560px) { .modes { grid-template-columns: 1fr; gap: 16px; } .lead { margin-top: 6vh; } }
+  .how { margin-top: 28px; font-size: .85rem; color: var(--muted); }
+  .how summary { cursor: pointer; color: var(--muted); width: fit-content; }
+  .how summary:hover { color: var(--text); }
+  .how p { margin: 8px 0; }
+  .how strong { color: var(--text); font-weight: 600; }
   .msg { margin: 22px 0; }
   .msg.user .bubble { background: var(--user); border-radius: 12px; padding: 10px 14px; white-space: pre-wrap; margin-left: 15%; }
   .msg.bot .answer { font-family: var(--serif); font-size: 1.06rem; line-height: 1.65; }
@@ -86,62 +88,36 @@
 <main class="wrap">
   <section id="app">
     <div id="examples">
-      <p class="lead">
-        Uma biblioteca de Freud, Lacan e comentadores lacanianos (incluindo a escola argentina) que você consulta
-        escrevendo como numa conversa. Pergunte em português: a busca também encontra os trechos em francês e espanhol.
-        Há três jeitos de usar:
-      </p>
+      <p class="lead">Pesquise Freud, Lacan e a escola lacaniana conversando: respostas com as fontes, gráficos e análises.</p>
       <div class="modes">
         <section class="mode">
-          <h2>Perguntar e ler as fontes</h2>
-          <p>
-            Peça a explicação de um conceito, compare autores ou localize uma passagem. A resposta cita os trechos em
-            notas (autor, obra, sessão, página) e situa numa linha do tempo as fontes usadas.
-          </p>
-          <div class="ex">
-            <button type="button">Como Lacan define o objeto a no Seminário 10?</button>
-            <button type="button">Qual a diferença entre sintoma e sinthoma?</button>
-            <button type="button">O que Eidelsztein critica na leitura usual do Outro?</button>
-          </div>
+          <h2>Perguntar</h2>
+          <button type="button" data-q="Como Lacan define o objeto a no Seminário 10?">O objeto a no Seminário 10</button>
+          <button type="button" data-q="Qual a diferença entre sintoma e sinthoma?">Sintoma e sinthoma</button>
         </section>
         <section class="mode">
-          <h2>Explorar os termos no tempo</h2>
-          <p>
-            Veja em gráficos como um termo ganha ou perde peso ao longo do ensino (por ano, ou sessão a sessão nos
-            seminários), compare até três conceitos, descubra em que obras um conceito pesa mais e com quais outros
-            ele aparece associado.
-          </p>
-          <div class="ex">
-            <button type="button">Como o gozo ganha peso ao longo dos seminários?</button>
-            <button type="button">Compare gozo, desejo e objeto a ao longo do ensino de Lacan</button>
-            <button type="button">Em que obras o sinthoma pesa mais?</button>
-            <button type="button">Quais conceitos mais se associam ao Nome-do-Pai?</button>
-          </div>
+          <h2>Explorar no tempo</h2>
+          <button type="button" data-q="Como o gozo ganha peso ao longo dos seminários?">O gozo nos seminários</button>
+          <button type="button" data-q="Compare gozo, desejo e objeto a ao longo do ensino de Lacan">Gozo, desejo e objeto a</button>
         </section>
         <section class="mode">
           <h2>Analisar com Python</h2>
-          <p>
-            Peça uma análise sob medida, como agrupar por década, comparar linhas teóricas, montar um heatmap ou calcular
-            correlações. A IA escreve e executa o código (pandas, matplotlib) num ambiente isolado e entrega o gráfico,
-            os dados em CSV e o código para você conferir.
-          </p>
-          <div class="ex">
-            <button type="button">Em Python, compare o peso do gozo em Lacan e na escola argentina, década a década</button>
-            <button type="button">Faça um heatmap dos principais conceitos por seminário de Lacan</button>
-            <button type="button">Calcule a correlação entre gozo e objeto a, sessão a sessão, nos seminários</button>
-          </div>
+          <button type="button" data-q="Em Python, compare o peso do gozo em Lacan e na escola argentina, década a década">Gozo por década</button>
+          <button type="button" data-q="Faça um heatmap dos principais conceitos por seminário de Lacan">Conceitos por seminário</button>
         </section>
       </div>
-      <p class="tip">
-        <strong>Dica:</strong> diga o recorte que interessa: um seminário, um período ("entre 1964 e 1970"), uma
-        língua ou um autor. E continue a conversa para aprofundar ("mostre por sessão", "e em Freud?").
-        Os gráficos medem a frequência dos termos no acervo: indicam onde ler, não o que o conceito significa.
-      </p>
-      <div class="notice">
-        <strong>Prova de conceito acadêmica, aberta para teste.</strong> As respostas são geradas por IA (Claude) e
-        levam de 1 a 2 minutos. Confira sempre nas fontes. Perguntas, respostas e avaliações (👍/👎) ficam registradas
-        para avaliar a ferramenta. <strong>Não inclua material clínico nem dados que identifiquem pacientes.</strong>
-      </div>
+      <details class="how">
+        <summary>Como funciona</summary>
+        <p><strong>Perguntar:</strong> explicações de conceitos, comparações entre autores, passagens. A resposta cita os
+          trechos em notas (autor, obra, sessão, página) e situa as fontes numa linha do tempo.</p>
+        <p><strong>Explorar no tempo:</strong> gráficos de como um termo ganha ou perde peso (por ano ou sessão a sessão),
+          comparação de até três conceitos, obras em que um conceito pesa mais e conceitos associados.</p>
+        <p><strong>Analisar com Python:</strong> análises sob medida (décadas, linhas teóricas, heatmaps, correlações). A IA
+          escreve e executa o código num ambiente isolado e entrega gráfico, dados em CSV e o código.</p>
+        <p>Pergunte em português: a busca também encontra trechos em francês e espanhol. Dê o recorte (um seminário, um
+          período, um autor) e continue a conversa para aprofundar. Os gráficos medem a frequência dos termos: indicam
+          onde ler, não o que o conceito significa. Respostas levam de 1 a 2 minutos; confira sempre nas fontes.</p>
+      </details>
     </div>
     <div id="log" aria-live="polite"></div>
   </section>
@@ -153,7 +129,7 @@
       <textarea id="q" rows="1" placeholder="Escreva sua pergunta…" aria-label="Pergunta" maxlength="4000"></textarea>
       <button class="primary" id="enviar" type="submit">Enviar</button>
     </form>
-    <div class="hint">Enter envia · Shift+Enter quebra a linha</div>
+    <div class="hint">Prova de conceito acadêmica · não inclua dados de pacientes · as perguntas ficam registradas para avaliar a ferramenta</div>
   </div>
 </footer>
 
@@ -313,7 +289,7 @@ $("ask").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q"
 $("q").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); } });
 const autosize = () => { $("q").style.height = "auto"; $("q").style.height = Math.min($("q").scrollHeight, 200) + "px"; };
 $("q").addEventListener("input", autosize);
-$("examples").querySelectorAll(".ex button").forEach((b) => b.addEventListener("click", () => ask(b.textContent)));
+$("examples").querySelectorAll(".mode button").forEach((b) => b.addEventListener("click", () => ask(b.dataset.q)));
 $("nova").addEventListener("click", () => { if (busy) return; conversa = null; $("log").innerHTML = ""; $("examples").hidden = false; $("q").focus(); });
 $("q").focus();
 </script>
