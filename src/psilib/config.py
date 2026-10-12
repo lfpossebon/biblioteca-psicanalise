@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     # Chat da POC (a chave vem de ANTHROPIC_API_KEY, lida pelo próprio SDK)
     chat_model: str = "claude-opus-5-5"
+    chat_python_enabled: bool = True  # análise em Python (execução de código da Claude API)
     chat_effort: str = "medium"  # low | medium | high | xhigh | max
     chat_daily_limit: int = 30  # perguntas por conexão (hash do IP) por dia
     chat_ip_salt: str = "psilib-poc"  # sal do hash do IP; troque na nuvem (CHAT_IP_SALT)

@@ -39,7 +39,7 @@ def test_resolve_citations_drops_unseen_ids():
 
 
 def test_tool_definitions_are_valid_schemas():
-    defs = chat.tool_definitions()
+    defs = chat.tool_definitions(python=False)
     assert [d["name"] for d in defs] == list(chat.TOOLS)
     buscar = defs[0]
     assert buscar["input_schema"]["required"] == ["consulta"]
@@ -156,7 +156,7 @@ def test_answer_runs_tools_and_validates_citations(chat_env, monkeypatch):
     assert req["fallbacks"] == "default"
     assert req["betas"] == [chat.FALLBACK_BETA]
     assert req["output_config"] == {"effort": "medium"}
-    assert [t["name"] for t in req["tools"]] == list(chat.TOOLS)
+    assert [t["name"] for t in req["tools"]] == [t["name"] for t in chat.tool_definitions()]
 
     with db.connect() as conn:
         turn = conn.execute("select * from chat_turn where id = %s", (fim["turno"],)).fetchone()

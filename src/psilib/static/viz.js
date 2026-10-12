@@ -2,6 +2,7 @@
  *
  * Viz.figure(spec)          → <figure> de uma especificação do servidor (psilib/visuals.py)
  * Viz.sources(citacoes, n)  → cronologia das fontes citadas numa resposta (ou null)
+ * Viz.python(evento)        → cartão de uma análise em Python (gráficos, downloads, código)
  *
  * Regras (skill de visualização): paleta categórica validada (3 cores, todos os pares, claro e
  * escuro), um eixo só, linhas de 2px, barras <= 24px com ponta arredondada, grade hairline,
@@ -77,6 +78,15 @@
 .viz-table th { text-align: left; font-weight: 600; color: var(--viz-ink2); position: sticky; top: 0; background: var(--viz-surface); }
 .viz-table th, .viz-table td { padding: 3px 6px; border-bottom: 1px solid var(--viz-grid); vertical-align: top; }
 .viz-table td.num { text-align: right; }
+.viz-pyimg { background: #fcfcfb; border-radius: 8px; padding: 6px; margin-top: 10px; }
+.viz-pyimg img { display: block; width: 100%; height: auto; }
+.viz-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.viz-links a.viz-btn { text-decoration: none; }
+.viz-codewrap { margin-top: 8px; }
+.viz-codehead { font-size: .7rem; color: var(--viz-muted); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.viz-code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--viz-ink);
+  background: var(--viz-ring); border-radius: 8px; padding: 10px 12px; margin: 0; max-height: 360px; overflow: auto;
+  white-space: pre; tab-size: 4; }
 `;
 
   // ---------------------------------------------------------------- utilitários
@@ -487,5 +497,57 @@
     return fig;
   }
 
-  window.Viz = { figure, sources };
+  // ---------------------------------------------------------------- análise em Python
+
+  function python(ev) {
+    ensureStyles();
+    const fig = el("figure", "viz-root viz-fig");
+    fig.style.margin = "14px 0";
+    fig.appendChild(el("div", "viz-kicker", `Análise em Python ${ev.indice}`));
+    const images = ev.arquivos.filter((a) => a.mime.startsWith("image/"));
+    if (!images.length) fig.appendChild(el("div", "viz-sub", "Análise sem gráfico: veja o código e o resultado."));
+    for (const a of images) {
+      const frame = el("div", "viz-pyimg");
+      const img = document.createElement("img");
+      img.src = `data:${a.mime};base64,${a.base64}`;
+      img.alt = `Gráfico gerado em Python (${a.nome})`;
+      frame.appendChild(img);
+      fig.appendChild(frame);
+    }
+    const foot = el("div", "viz-foot");
+    const links = el("div", "viz-links");
+    const ordered = [...ev.arquivos].sort((a, b) => Number(a.mime === "text/csv") - Number(b.mime === "text/csv"));
+    for (const a of ordered) {
+      const link = el("a", "viz-btn", a.mime === "text/csv" ? `Baixar dados (${a.nome})` : `Baixar ${a.nome}`);
+      link.href = `data:${a.mime};base64,${a.base64}`;
+      link.download = a.nome;
+      links.appendChild(link);
+    }
+    foot.appendChild(links);
+    const code = el("div", "viz-codewrap");
+    code.hidden = true;
+    ev.celulas.forEach((c, i) => {
+      code.appendChild(el("div", "viz-codehead", `${c.linguagem === "bash" ? "Comando" : "Célula"} ${i + 1} · ${c.linguagem}`));
+      code.appendChild(el("pre", "viz-code", c.codigo));
+    });
+    if (ev.saida) {
+      code.appendChild(el("div", "viz-codehead", "Saída"));
+      code.appendChild(el("pre", "viz-code", ev.saida));
+    }
+    if (ev.celulas.length || ev.saida) {
+      const btn = el("button", "viz-btn", "Ver código");
+      btn.type = "button";
+      btn.setAttribute("aria-expanded", "false");
+      btn.addEventListener("click", () => {
+        code.hidden = !code.hidden;
+        btn.textContent = code.hidden ? "Ver código" : "Ocultar código";
+        btn.setAttribute("aria-expanded", String(!code.hidden));
+      });
+      foot.appendChild(btn);
+    }
+    fig.append(foot, code);
+    return fig;
+  }
+
+  window.Viz = { figure, sources, python };
 })();

@@ -38,7 +38,7 @@
   textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   #log { padding-bottom: 180px; }
   .lead { font-family: var(--serif); font-size: 1.08rem; line-height: 1.55; margin: 22px 0 14px; }
-  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
   .mode { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .mode h2 { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
   .mode p { font-size: .88rem; color: var(--muted); margin: 0 0 10px; }
@@ -89,7 +89,7 @@
       <p class="lead">
         Uma biblioteca de Freud, Lacan e comentadores lacanianos (incluindo a escola argentina) que você consulta
         escrevendo como numa conversa. Pergunte em português: a busca também encontra os trechos em francês e espanhol.
-        Há dois jeitos de usar:
+        Há três jeitos de usar:
       </p>
       <div class="modes">
         <section class="mode">
@@ -116,6 +116,19 @@
             <button type="button">Compare gozo, desejo e objeto a ao longo do ensino de Lacan</button>
             <button type="button">Em que obras o sinthoma pesa mais?</button>
             <button type="button">Quais conceitos mais se associam ao Nome-do-Pai?</button>
+          </div>
+        </section>
+        <section class="mode">
+          <h2>Analisar com Python</h2>
+          <p>
+            Peça uma análise sob medida, como agrupar por década, comparar linhas teóricas, montar um heatmap ou calcular
+            correlações. A IA escreve e executa o código (pandas, matplotlib) num ambiente isolado e entrega o gráfico,
+            os dados em CSV e o código para você conferir.
+          </p>
+          <div class="ex">
+            <button type="button">Em Python, compare o peso do gozo em Lacan e na escola argentina, década a década</button>
+            <button type="button">Faça um heatmap dos principais conceitos por seminário de Lacan</button>
+            <button type="button">Calcule a correlação entre gozo e objeto a, sessão a sessão, nos seminários</button>
           </div>
         </section>
       </div>
@@ -248,6 +261,7 @@ async function ask(pergunta) {
         if (ev.tipo === "conversa") conversa = ev.id;
         else if (ev.tipo === "status") status.textContent = ev.texto;
         else if (ev.tipo === "visual") figs.appendChild(Viz.figure(ev.visual));
+        else if (ev.tipo === "python") figs.appendChild(Viz.python(ev));
         else if (ev.tipo === "texto") {
           text += ev.texto;
           status.textContent = "Escrevendo…";

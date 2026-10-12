@@ -293,6 +293,38 @@ def timeline(
     }
 
 
+def concept_table(concepts: list[str], filters: Filters | None = None, limit: int = 20000) -> dict:
+    """Tabela larga para análise (pandas): uma linha por conceito × documento × período.
+
+    É o dado bruto da linha do tempo, antes de agregar: quem analisa decide como agrupar
+    (por década, linha teórica, autor, seminário...). Agregue somando menções e palavras.
+    """
+    filters = filters or Filters()
+    with connect() as conn:
+        slugs = []
+        for c in concepts:
+            slug = _concept_slug(conn, c)
+            if not slug:
+                return {"erro": f"conceito '{c}' não está no léxico (veja dados_conceitos)"}
+            slugs.append(slug)
+        where, p = filters.sql("t")
+        p |= {"slugs": slugs, "limit": limit}
+        rows = conn.execute(
+            f"""select t.concept as conceito, coalesce(t.work_title, d.title) as obra, t.author as autor,
+                       t.line as linha, t.language as lingua, t.source_id as fonte,
+                       t.seminar_number as seminario, t.period_date as periodo,
+                       t.period_precision as precisao, t.words::int as palavras,
+                       t.mentions::int as mencoes, t.per_10k::float8 as por_10k
+                from mv_concept_timeline t join document d on d.id = t.document_id
+                where t.concept = any(%(slugs)s) and t.period_date is not null and {where}
+                order by t.period_date, t.concept, obra limit %(limit)s""",
+            p,
+        ).fetchall()
+    for r in rows:
+        r["periodo"] = r["periodo"].isoformat()
+    return {"conceitos": slugs, "linhas": rows, "truncado": len(rows) >= limit}
+
+
 def cooccurrence(concept: str, limit: int = 15) -> dict:
     """Conceitos que aparecem nos mesmos trechos, ordenados por PMI (associação acima do acaso)."""
     with connect() as conn:
